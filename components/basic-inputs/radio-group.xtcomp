@@ -1,0 +1,5 @@
+id: radio-group
+label: Radio Group
+icon: "\u26AA"
+template: '<RadioGroup name="choice" label="Choose option" options="Option 1,Option 2,Option 3" />'
+description: Radio button group

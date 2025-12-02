@@ -1,0 +1,17 @@
+# Component Registry
+# Defines palette tabs and their component lists
+
+palette:
+  - tab: Basic Inputs
+    description: Standard form input components
+    components:
+      - basic-inputs/text-input.xtcomp
+      - basic-inputs/textarea.xtcomp
+      - basic-inputs/integer-input.xtcomp
+      - basic-inputs/decimal-input.xtcomp
+      - basic-inputs/checkbox.xtcomp
+      - basic-inputs/radio-group.xtcomp
+      - basic-inputs/select.xtcomp
+      - basic-inputs/multiple-choice.xtcomp
+      - basic-inputs/date-picker.xtcomp
+      - basic-inputs/time-picker.xtcomp

@@ -1,0 +1,5 @@
+id: multiple-choice
+label: Multiple Choice
+icon: "\u2611"
+template: '<MultipleChoice name="choices" label="Select options" options="Option 1,Option 2,Option 3" />'
+description: List of options with multiple choice

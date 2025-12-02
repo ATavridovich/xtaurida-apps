@@ -1,0 +1,5 @@
+id: time-picker
+label: Time Picker
+icon: "\U0001F550"
+template: '<TimePicker name="time" label="Select Time" />'
+description: Time selection field

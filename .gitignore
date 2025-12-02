@@ -25,7 +25,10 @@ product.overrides.json
 vscode-telemetry-docs/
 
 discovery/
+docs/
 projects/
+components/.old_version/
 .claude/
+.obsidian/
 CLAUDE.md
 nul

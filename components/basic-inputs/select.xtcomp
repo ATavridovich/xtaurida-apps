@@ -1,0 +1,5 @@
+id: select
+label: Select
+icon: "\U0001F3AF"
+template: '<Select name="selection" label="Choose..." options="Option 1,Option 2,Option 3" />'
+description: Dropdown select field
