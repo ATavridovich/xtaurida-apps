@@ -9,6 +9,10 @@
     "vscode": "^1.52.0"
   },
   "categories": ["Programming Languages"],
+  "activationEvents": [
+    "onCustomEditor:xtform.editor"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "languages": [
       {
@@ -22,7 +26,31 @@
         ],
         "configuration": "./language-configuration.json"
       }
+    ],
+    "customEditors": [
+      {
+        "viewType": "xtform.editor",
+        "displayName": "XForm Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.xtform"
+          }
+        ],
+        "priority": "default"
+      }
     ]
+  },
+  "scripts": {
+    "vscode:prepublish": "node esbuild.mjs",
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.52.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0"
   },
   "repository": {
     "type": "git",

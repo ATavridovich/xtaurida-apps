@@ -1,0 +1,196 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+:root {
+	--vscode-editor-background: var(--vscode-editor-background);
+	--vscode-editor-foreground: var(--vscode-editor-foreground);
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	color: var(--vscode-editor-foreground);
+	background-color: var(--vscode-editor-background);
+	height: 100vh;
+	overflow: hidden;
+}
+
+#root {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.xtform-editor {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+/* Component Palette */
+.component-palette {
+	padding: 12px;
+	border-bottom: 1px solid var(--vscode-panel-border);
+	background-color: var(--vscode-sideBar-background);
+	overflow-x: auto;
+	white-space: nowrap;
+}
+
+.component-palette h3 {
+	margin: 0 0 8px 0;
+	font-size: 13px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: var(--vscode-foreground);
+}
+
+.palette-tab h4 {
+	margin: 8px 0 4px 0;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--vscode-descriptionForeground);
+}
+
+.component-grid {
+	display: inline-flex;
+	gap: 8px;
+}
+
+.component-item {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 8px;
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	cursor: grab;
+	background-color: var(--vscode-editor-background);
+	transition: all 0.2s;
+	min-width: 70px;
+	text-align: center;
+}
+
+.component-item:hover {
+	background-color: var(--vscode-list-hoverBackground);
+	border-color: var(--vscode-focusBorder);
+}
+
+.component-item:active {
+	cursor: grabbing;
+}
+
+.component-icon {
+	font-size: 24px;
+	margin-bottom: 4px;
+}
+
+.component-icon svg {
+	width: 24px;
+	height: 24px;
+	stroke: var(--vscode-foreground);
+}
+
+.component-label {
+	font-size: 11px;
+	color: var(--vscode-foreground);
+}
+
+/* Editor Main */
+.editor-main {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+/* Tab Bar */
+.tab-bar {
+	display: flex;
+	border-bottom: 1px solid var(--vscode-panel-border);
+	background-color: var(--vscode-editorGroupHeader-tabsBackground);
+}
+
+.tab {
+	padding: 8px 16px;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	color: var(--vscode-tab-inactiveForeground);
+	cursor: pointer;
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	transition: all 0.2s;
+}
+
+.tab:hover {
+	color: var(--vscode-tab-activeForeground);
+	background-color: var(--vscode-tab-hoverBackground);
+}
+
+.tab.active {
+	color: var(--vscode-tab-activeForeground);
+	border-bottom-color: var(--vscode-focusBorder);
+	background-color: var(--vscode-tab-activeBackground);
+}
+
+/* Error Banner */
+.error-banner {
+	padding: 8px 12px;
+	background-color: var(--vscode-inputValidation-errorBackground);
+	color: var(--vscode-inputValidation-errorForeground);
+	border: 1px solid var(--vscode-inputValidation-errorBorder);
+	font-size: 12px;
+}
+
+/* Editor Content */
+.editor-content {
+	flex: 1;
+	overflow: auto;
+	padding: 16px;
+}
+
+/* Form View */
+.form-view h2 {
+	margin-top: 0;
+	color: var(--vscode-foreground);
+}
+
+.form-content {
+	margin-top: 16px;
+}
+
+.form-content pre {
+	background-color: var(--vscode-textCodeBlock-background);
+	padding: 12px;
+	border-radius: 4px;
+	overflow: auto;
+	font-size: 12px;
+}
+
+/* Edit Template View */
+.edit-template-view {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.template-editor {
+	flex: 1;
+	width: 100%;
+	padding: 12px;
+	font-family: var(--vscode-editor-font-family);
+	font-size: var(--vscode-editor-font-size);
+	background-color: var(--vscode-editor-background);
+	color: var(--vscode-editor-foreground);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	resize: none;
+}
+
+.template-editor:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+}
