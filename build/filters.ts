@@ -190,6 +190,7 @@ export const copyrightFilter = Object.freeze<string[]>([
 	'!extensions/html-language-features/server/src/modes/typescript/*',
 	'!extensions/*/server/bin/*',
 	'!src/vs/workbench/contrib/terminal/common/scripts/psreadline/**',
+	'!extensions/xtform/**',
 ]);
 
 export const tsFormattingFilter = Object.freeze<string[]>([
@@ -209,6 +210,7 @@ export const tsFormattingFilter = Object.freeze<string[]>([
 	'!extensions/html-language-features/server/lib/jquery.d.ts',
 	'!extensions/terminal-suggest/src/shell/zshBuiltinsCache.ts',
 	'!extensions/terminal-suggest/src/shell/fishBuiltinsCache.ts',
+	'!extensions/xtform/**',
 ]);
 
 export const eslintFilter = Object.freeze<string[]>([
