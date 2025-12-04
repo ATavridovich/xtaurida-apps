@@ -20,22 +20,34 @@ export function App() {
 	const [content, setContent] = useState<string>('');
 	const [error, setError] = useState<string | null>(null);
 
+	// Send ready message when webview loads
+	useEffect(() => {
+		console.log('Webview ready, sending ready message');
+		postMessage({ type: 'ready' });
+	}, [postMessage]);
+
 	// Listen for messages from extension
 	useEffect(() => {
 		return onMessage((message: ExtensionMessage) => {
+			console.log('Webview received message:', message.type, message);
 			switch (message.type) {
-				case 'init':
-					setRegistry(message.registry);
-					setAST(message.ast);
-					setData(message.data);
-					setContent(JSON.stringify(message.ast, null, 2)); // Temporary
-					setError(null);
-					break;
-
 				case 'update':
+					if (message.registry) {
+						console.log('Registry loaded:', message.registry.tabs.length, 'tabs');
+						message.registry.tabs.forEach(tab => {
+							console.log(`  Tab "${tab.name}":`, tab.components.length, 'components');
+						});
+						setRegistry(message.registry);
+					}
 					setAST(message.ast);
-					setData(message.data);
-					setError(null);
+					// For now, convert AST body back to string for Edit View
+					// In Phase 4, we'll implement proper serialization
+					setContent(JSON.stringify(message.ast, null, 2));
+					if (message.errors && message.errors.length > 0) {
+						setError(`Parse errors: ${message.errors.map(e => e.message).join(', ')}`);
+					} else {
+						setError(null);
+					}
 					break;
 
 				case 'error':

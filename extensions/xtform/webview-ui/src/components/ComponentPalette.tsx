@@ -29,7 +29,7 @@ export function ComponentPalette({ registry }: ComponentPaletteProps) {
 								draggable={true}
 								title={component.description}
 							>
-								<div className="component-icon" dangerouslySetInnerHTML={{ __html: component.icon }} />
+								<div className="component-icon">{component.icon || '[?]'}</div>
 								<div className="component-label">{component.label}</div>
 							</div>
 						))}

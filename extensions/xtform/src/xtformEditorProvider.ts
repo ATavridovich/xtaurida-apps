@@ -5,14 +5,56 @@
 
 import * as vscode from 'vscode';
 import { XtformWebviewManager } from './webview/xtformWebviewManager';
+import { XtformParser } from './parser';
+import { RegistryLoader, ComponentRegistry } from './registry';
 
 /**
  * Provider for .xtform custom text editor
  */
 export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'xtform.editor';
+	private registry: ComponentRegistry | null = null;
+	private registryLoadPromise: Promise<void> | null = null;
 
-	constructor(private readonly context: vscode.ExtensionContext) { }
+	constructor(private readonly context: vscode.ExtensionContext) {
+		// Start loading registry asynchronously
+		this.registryLoadPromise = this.loadRegistry();
+	}
+
+	/**
+	 * Load component registry
+	 */
+	private async loadRegistry(): Promise<void> {
+		try {
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				console.warn('No workspace folder found, component registry not loaded');
+				return;
+			}
+
+			console.log('Loading registry from workspace:', workspaceFolder.uri.fsPath);
+			const loader = new RegistryLoader(workspaceFolder.uri.fsPath);
+			const { registry, errors } = await loader.load();
+
+			if (errors.length > 0) {
+				console.warn('Registry loading errors:', errors);
+				errors.forEach(err => console.warn(`  - ${err.file}: ${err.message}`));
+			}
+
+			if (registry) {
+				this.registry = registry;
+				console.log('Component registry loaded successfully:');
+				console.log(`  - ${registry.tabs.length} tabs`);
+				registry.tabs.forEach(tab => {
+					console.log(`  - Tab "${tab.name}": ${tab.components.length} components`);
+				});
+			} else {
+				console.error('Registry is null after loading');
+			}
+		} catch (error) {
+			console.error('Failed to load component registry:', error);
+		}
+	}
 
 	/**
 	 * Called when a custom editor is opened
@@ -98,41 +140,22 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 		force: boolean
 	): Promise<void> {
 		try {
+			// Ensure registry is loaded
+			if (this.registryLoadPromise) {
+				await this.registryLoadPromise;
+				this.registryLoadPromise = null;
+			}
+
+			// Parse document content
 			const content = document.getText();
+			const parseResult = XtformParser.parse(content);
 
-			// TODO: Implement actual parsing in Phase 2
-			// For now, send dummy data
-			const dummyAST = {
-				uuid: 'test-uuid',
-				title: 'Test Form',
-				version: 1,
-				body: content,
-				data: {},
-				format: '1.2'
-			};
-
-			const dummyRegistry = {
-				tabs: [{
-					name: 'Basic Inputs',
-					description: 'Standard form input components',
-					components: [
-						{
-							id: 'text-input',
-							label: 'Text Input',
-							// allow-any-unicode-next-line
-							icon: '📝',
-							description: 'Single-line text field',
-							template: '[% TextInput name="field" label="Label" /%]'
-						}
-					]
-				}]
-			};
-
+			// Send parsed data to webview
 			webviewManager.postMessage({
-				type: 'init',
-				registry: dummyRegistry,
-				ast: dummyAST,
-				data: {}
+				type: 'update',
+				registry: this.registry,
+				ast: parseResult.ast,
+				errors: parseResult.errors
 			});
 
 		} catch (error) {

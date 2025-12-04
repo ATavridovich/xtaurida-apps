@@ -10,8 +10,8 @@
 export interface ComponentManifest {
 	id: string;
 	label: string;
-	icon: string;
-	description: string;
+	icon?: string;
+	description?: string;
 	template: string;
 	requiresName?: boolean;
 	isContainer?: boolean;
@@ -25,15 +25,23 @@ export interface ComponentRegistry {
 	}>;
 }
 
-export interface XtformAST {
-	uuid: string;
-	title: string;
-	version: number;
-	body: string;
-	data: Record<string, any>;
-	format: string;
+export interface XtformMetadata {
+	title?: string;
 	description?: string;
-	extends?: boolean | string;
+	version?: string;
+	[key: string]: any;
+}
+
+export interface ASTNode {
+	type: string;
+	line?: number;
+	column?: number;
+	[key: string]: any;
+}
+
+export interface XtformAST {
+	metadata: XtformMetadata;
+	body: ASTNode;
 }
 
 export interface ValidationError {
@@ -53,6 +61,5 @@ export type WebviewMessage =
 
 // Extension → Webview messages
 export type ExtensionMessage =
-	| { type: 'init'; registry: ComponentRegistry; ast: XtformAST; data: Record<string, any> }
-	| { type: 'update'; ast: XtformAST; data: Record<string, any> }
+	| { type: 'update'; registry: ComponentRegistry | null; ast: XtformAST; errors: ValidationError[] }
 	| { type: 'error'; message: string; errors: ValidationError[] };
