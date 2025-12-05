@@ -1,5 +1,5 @@
 id: textarea
 label: Text Area
 icon: "\U0001F4C4"
-template: '<TextArea name="message" label="Message" placeholder="Enter your message..." rows={4} />'
+template: '[% TextArea name="message" label="Message" placeholder="Enter your message..." rows={4} /%]'
 description: Multi-line text field

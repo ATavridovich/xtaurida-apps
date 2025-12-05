@@ -8,12 +8,18 @@ import type { ComponentRegistry } from '../types/messages';
 
 interface ComponentPaletteProps {
 	registry: ComponentRegistry | null;
+	onInsertComponent?: (template: string) => void;
 }
 
-export function ComponentPalette({ registry }: ComponentPaletteProps) {
+export function ComponentPalette({ registry, onInsertComponent }: ComponentPaletteProps) {
 	if (!registry) {
 		return <div className="component-palette">Loading components...</div>;
 	}
+
+	const handleComponentClick = (template: string, label: string) => {
+		console.log(`Inserting component: ${label}`);
+		onInsertComponent?.(template);
+	};
 
 	return (
 		<div className="component-palette">
@@ -28,6 +34,7 @@ export function ComponentPalette({ registry }: ComponentPaletteProps) {
 								className="component-item"
 								draggable={true}
 								title={component.description}
+								onClick={() => handleComponentClick(component.template, component.label)}
 							>
 								<div className="component-icon">{component.icon || '[?]'}</div>
 								<div className="component-label">{component.label}</div>

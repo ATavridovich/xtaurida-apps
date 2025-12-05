@@ -1,5 +1,5 @@
 id: date-picker
 label: Date Picker
 icon: "\U0001F4C5"
-template: '<DatePicker name="date" label="Select Date" />'
+template: '[% DatePicker name="date" label="Select Date" /%]'
 description: Date selection field

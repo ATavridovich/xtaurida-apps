@@ -1,5 +1,5 @@
 id: checkbox
 label: Checkbox
 icon: "\u2611\uFE0F"
-template: '<Checkbox name="agree" label="I agree to the terms" />'
+template: '[% Checkbox name="agree" label="I agree to the terms" /%]'
 description: Checkbox for manual input

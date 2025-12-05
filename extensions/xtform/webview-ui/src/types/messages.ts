@@ -42,6 +42,7 @@ export interface ASTNode {
 export interface XtformAST {
 	metadata: XtformMetadata;
 	body: ASTNode;
+	data: Record<string, any>;
 }
 
 export interface ValidationError {
@@ -61,5 +62,5 @@ export type WebviewMessage =
 
 // Extension → Webview messages
 export type ExtensionMessage =
-	| { type: 'update'; registry: ComponentRegistry | null; ast: XtformAST; errors: ValidationError[] }
+	| { type: 'update'; registry: ComponentRegistry | null; ast: XtformAST; bodyText: string; errors: ValidationError[] }
 	| { type: 'error'; message: string; errors: ValidationError[] };

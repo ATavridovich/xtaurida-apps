@@ -102,6 +102,7 @@ export interface DocumentNode extends ASTNode {
 export interface XtformAST {
 	metadata: XtformMetadata;
 	body: DocumentNode;
+	data: Record<string, any>;
 }
 
 /**

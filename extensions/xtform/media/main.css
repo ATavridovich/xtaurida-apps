@@ -194,3 +194,197 @@ body {
 .template-editor:focus {
 	outline: 1px solid var(--vscode-focusBorder);
 }
+
+/* Form field styles */
+.form-field {
+	margin-bottom: 16px;
+}
+
+.form-field label {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 500;
+	color: var(--vscode-foreground);
+}
+
+.form-field input[type="text"],
+.form-field input[type="number"],
+.form-field input[type="date"],
+.form-field input[type="time"],
+.form-field textarea,
+.form-field select {
+	width: 100%;
+	padding: 6px 8px;
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+	border-radius: 2px;
+	font-family: inherit;
+	font-size: inherit;
+}
+
+.form-field input[type="text"]:focus,
+.form-field input[type="number"]:focus,
+.form-field input[type="date"]:focus,
+.form-field input[type="time"]:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: -1px;
+}
+
+/* Checkbox styles */
+.form-field-checkbox {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.form-field-checkbox input[type="checkbox"] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	cursor: pointer;
+	border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+	border-radius: 3px;
+	background-color: var(--vscode-input-background);
+	position: relative;
+	flex-shrink: 0;
+}
+
+.form-field-checkbox input[type="checkbox"]:hover {
+	border-color: var(--vscode-focusBorder);
+}
+
+.form-field-checkbox input[type="checkbox"]:checked {
+	background-color: var(--vscode-button-background);
+	border-color: var(--vscode-button-background);
+}
+
+.form-field-checkbox input[type="checkbox"]:checked::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 2px;
+	width: 4px;
+	height: 8px;
+	border: solid var(--vscode-button-foreground);
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+}
+
+.form-field-checkbox label {
+	margin: 0;
+	cursor: pointer;
+	font-weight: normal;
+}
+
+/* Radio group styles */
+.radio-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.radio-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.radio-item input[type="radio"] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	cursor: pointer;
+	border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+	border-radius: 50%;
+	background-color: var(--vscode-input-background);
+	position: relative;
+	flex-shrink: 0;
+}
+
+.radio-item input[type="radio"]:hover {
+	border-color: var(--vscode-focusBorder);
+}
+
+.radio-item input[type="radio"]:checked {
+	border-color: var(--vscode-button-background);
+}
+
+.radio-item input[type="radio"]:checked::after {
+	content: '';
+	position: absolute;
+	left: 3px;
+	top: 3px;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--vscode-button-background);
+}
+
+.radio-item label {
+	margin: 0;
+	cursor: pointer;
+	font-weight: normal;
+}
+
+/* Checkbox group (MultipleChoice) styles */
+.checkbox-group {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 8px;
+}
+
+.checkbox-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.checkbox-item input[type="checkbox"] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	cursor: pointer;
+	border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+	border-radius: 3px;
+	background-color: var(--vscode-input-background);
+	position: relative;
+	flex-shrink: 0;
+}
+
+.checkbox-item input[type="checkbox"]:hover {
+	border-color: var(--vscode-focusBorder);
+}
+
+.checkbox-item input[type="checkbox"]:checked {
+	background-color: var(--vscode-button-background);
+	border-color: var(--vscode-button-background);
+}
+
+.checkbox-item input[type="checkbox"]:checked::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 2px;
+	width: 4px;
+	height: 8px;
+	border: solid var(--vscode-button-foreground);
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+}
+
+.checkbox-item label {
+	margin: 0;
+	cursor: pointer;
+	font-weight: normal;
+}

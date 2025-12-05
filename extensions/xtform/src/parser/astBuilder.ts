@@ -148,18 +148,44 @@ export class ASTBuilder {
 			return null;
 		}
 
-		// Parse component name and props
-		const parts = content.split(/\s+/);
-		const name = parts[0];
+		// Extract component name (first word)
+		const nameMatch = content.match(/^(\w+)/);
+		if (!nameMatch) {
+			this.errors.push({
+				message: 'Invalid component name',
+				line: token.line,
+				column: token.column,
+				severity: 'error'
+			});
+			return null;
+		}
+
+		const name = nameMatch[1];
+		const propsString = content.substring(name.length).trim();
 		const props: Record<string, any> = {};
 
-		// Parse props (simple key=value or key="value")
-		for (let i = 1; i < parts.length; i++) {
-			const propMatch = parts[i].match(/^(\w+)=(?:"([^"]*)"|'([^']*)'|(\S+))$/);
-			if (propMatch) {
-				const key = propMatch[1];
-				const value = propMatch[2] || propMatch[3] || propMatch[4];
-				props[key] = value;
+		// Parse props with regex that handles quoted strings properly
+		// Matches: key="value" or key='value' or key={value}
+		const propRegex = /(\w+)=(?:"([^"]*)"|'([^']*)'|\{([^}]*)\})/g;
+		let match;
+
+		while ((match = propRegex.exec(propsString)) !== null) {
+			const key = match[1];
+			const quotedValue = match[2] || match[3]; // Double or single quoted
+			const bracedValue = match[4]; // {value}
+
+			if (quotedValue !== undefined) {
+				props[key] = quotedValue;
+			} else if (bracedValue !== undefined) {
+				// Try to parse as number or keep as string
+				const trimmed = bracedValue.trim();
+				if (/^\d+$/.test(trimmed)) {
+					props[key] = parseInt(trimmed, 10);
+				} else if (/^\d+\.\d+$/.test(trimmed)) {
+					props[key] = parseFloat(trimmed);
+				} else {
+					props[key] = trimmed;
+				}
 			}
 		}
 

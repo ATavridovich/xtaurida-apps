@@ -15,6 +15,8 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 	public static readonly viewType = 'xtform.editor';
 	private registry: ComponentRegistry | null = null;
 	private registryLoadPromise: Promise<void> | null = null;
+	private updateTimeouts: Map<string, NodeJS.Timeout> = new Map();
+	private skipNextWebviewUpdate: Map<string, boolean> = new Map();
 
 	constructor(private readonly context: vscode.ExtensionContext) {
 		// Start loading registry asynchronously
@@ -75,6 +77,12 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 		// Listen for document changes
 		const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
 			if (e.document.uri.toString() === document.uri.toString()) {
+				const docUri = document.uri.toString();
+				// Skip webview update if the change came from Edit Template View
+				if (this.skipNextWebviewUpdate.get(docUri)) {
+					this.skipNextWebviewUpdate.delete(docUri);
+					return;
+				}
 				this.updateWebview(document, webviewManager, true);
 			}
 		});
@@ -112,21 +120,21 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 
 			case 'updateText':
 				// User edited text in Edit Template View
-				// For now, we'll apply changes immediately
-				// TODO: Implement debouncing in Phase 2
+				// Set flag to skip webview update after document change
+				this.skipNextWebviewUpdate.set(document.uri.toString(), true);
 				await this.updateDocument(document, message.content);
 				break;
 
 			case 'updateData':
 				// User changed a form field value
-				// TODO: Implement in Phase 4
 				console.log('Update data:', message.name, message.value);
+				await this.updateFieldData(document, webviewManager, message.name, message.value);
 				break;
 
 			case 'insertComponent':
-				// User dragged component from palette
-				// TODO: Implement in Phase 3
+				// User clicked component from palette
 				console.log('Insert component:', message.template);
+				await this.insertComponentTemplate(document, webviewManager, message.template);
 				break;
 		}
 	}
@@ -150,11 +158,15 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 			const content = document.getText();
 			const parseResult = XtformParser.parse(content);
 
+			// Serialize body to markdown for Edit View
+			const bodyText = XtformParser.serializeBody(parseResult.ast.body);
+
 			// Send parsed data to webview
 			webviewManager.postMessage({
 				type: 'update',
 				registry: this.registry,
 				ast: parseResult.ast,
+				bodyText: bodyText,
 				errors: parseResult.errors
 			});
 
@@ -164,6 +176,85 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
 				message: error instanceof Error ? error.message : 'Unknown error',
 				errors: []
 			});
+		}
+	}
+
+	/**
+	 * Update a single field's data with debouncing
+	 */
+	private async updateFieldData(
+		document: vscode.TextDocument,
+		webviewManager: XtformWebviewManager,
+		fieldName: string,
+		value: any
+	): Promise<void> {
+		const docUri = document.uri.toString();
+
+		// Clear existing timeout for this document
+		const existingTimeout = this.updateTimeouts.get(docUri);
+		if (existingTimeout) {
+			clearTimeout(existingTimeout);
+		}
+
+		// Set new timeout for debounced update
+		const timeout = setTimeout(async () => {
+			try {
+				// Parse current document
+				const content = document.getText();
+				const parseResult = XtformParser.parse(content);
+
+				// Update data field
+				parseResult.ast.data[fieldName] = value;
+
+				// Serialize back to text
+				const newContent = XtformParser.serialize(parseResult.ast);
+
+				// Update document
+				await this.updateDocument(document, newContent);
+
+				// Remove timeout from map
+				this.updateTimeouts.delete(docUri);
+			} catch (error) {
+				console.error('Failed to update field data:', error);
+			}
+		}, 500); // 500ms debounce
+
+		this.updateTimeouts.set(docUri, timeout);
+	}
+
+	/**
+	 * Insert a component template at the end of the document body
+	 */
+	private async insertComponentTemplate(
+		document: vscode.TextDocument,
+		webviewManager: XtformWebviewManager,
+		template: string
+	): Promise<void> {
+		try {
+			// Get current document content
+			const content = document.getText();
+
+			// Find the data section (if it exists)
+			const dataMatch = content.match(/\n---\r?\ndata:/);
+
+			let newContent: string;
+			if (dataMatch && dataMatch.index !== undefined) {
+				// Insert before data section
+				const beforeData = content.substring(0, dataMatch.index);
+				const dataSection = content.substring(dataMatch.index);
+				newContent = beforeData + '\n\n' + template + '\n' + dataSection;
+			} else {
+				// No data section, append at end
+				newContent = content.trimEnd() + '\n\n' + template + '\n';
+			}
+
+			// Update document
+			await this.updateDocument(document, newContent);
+
+			// Refresh webview
+			await this.updateWebview(document, webviewManager, true);
+		} catch (error) {
+			console.error('Failed to insert component template:', error);
 		}
 	}
 

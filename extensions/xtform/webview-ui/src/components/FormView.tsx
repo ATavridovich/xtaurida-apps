@@ -10,9 +10,10 @@ import * as InputComponents from './inputs';
 interface FormViewProps {
 	ast: XtformAST | null;
 	data: Record<string, any>;
+	onDataChange: (fieldName: string, value: any) => void;
 }
 
-export function FormView({ ast, data }: FormViewProps) {
+export function FormView({ ast, data, onDataChange }: FormViewProps) {
 	if (!ast) {
 		return <div className="form-view">Loading form...</div>;
 	}
@@ -22,7 +23,7 @@ export function FormView({ ast, data }: FormViewProps) {
 			{ast.metadata.title && <h1>{ast.metadata.title}</h1>}
 			{ast.metadata.description && <p className="form-description">{ast.metadata.description}</p>}
 			<div className="form-content">
-				{renderNode(ast.body, data)}
+				{renderNode(ast.body, data, onDataChange)}
 			</div>
 		</div>
 	);
@@ -31,25 +32,29 @@ export function FormView({ ast, data }: FormViewProps) {
 /**
  * Render an AST node
  */
-function renderNode(node: ASTNode, data: Record<string, any>): React.ReactNode {
+function renderNode(
+	node: ASTNode,
+	data: Record<string, any>,
+	onDataChange: (fieldName: string, value: any) => void
+): React.ReactNode {
 	switch (node.type) {
 		case 'Document':
 			return node.children?.map((child: ASTNode, i: number) => (
-				<React.Fragment key={i}>{renderNode(child, data)}</React.Fragment>
+				<React.Fragment key={i}>{renderNode(child, data, onDataChange)}</React.Fragment>
 			));
 
 		case 'Heading':
 			const HeadingTag = `h${node.level}` as keyof JSX.IntrinsicElements;
 			return (
 				<HeadingTag key={node.line}>
-					{node.children?.map((child: ASTNode, i: number) => renderNode(child, data))}
+					{node.children?.map((child: ASTNode, i: number) => renderNode(child, data, onDataChange))}
 				</HeadingTag>
 			);
 
 		case 'Paragraph':
 			return (
 				<p key={node.line}>
-					{node.children?.map((child: ASTNode, i: number) => renderNode(child, data))}
+					{node.children?.map((child: ASTNode, i: number) => renderNode(child, data, onDataChange))}
 				</p>
 			);
 
@@ -57,7 +62,7 @@ function renderNode(node: ASTNode, data: Record<string, any>): React.ReactNode {
 			return node.value;
 
 		case 'Component':
-			return renderComponent(node, data);
+			return renderComponent(node, data, onDataChange);
 
 		default:
 			return null;
@@ -67,7 +72,11 @@ function renderNode(node: ASTNode, data: Record<string, any>): React.ReactNode {
 /**
  * Render a component node
  */
-function renderComponent(node: ASTNode, data: Record<string, any>): React.ReactNode {
+function renderComponent(
+	node: ASTNode,
+	data: Record<string, any>,
+	onDataChange: (fieldName: string, value: any) => void
+): React.ReactNode {
 	const componentName = node.name;
 	const props = node.props || {};
 
@@ -90,8 +99,9 @@ function renderComponent(node: ASTNode, data: Record<string, any>): React.ReactN
 		...props,
 		value,
 		onChange: (newValue: any) => {
-			// TODO: Implement in Phase 4 - send updateData message to extension
-			console.log('Data changed:', props.name, newValue);
+			if (props.name) {
+				onDataChange(props.name, newValue);
+			}
 		}
 	};
 

@@ -1,5 +1,5 @@
 id: decimal-input
 label: Decimal Input
 icon: "\U0001F523"
-template: '<DecimalInput name="amount" label="Amount" min={0} max={100} step={0.01} />'
+template: '[% DecimalInput name="amount" label="Amount" min={0} max={100} step={0.01} /%]'
 description: Decimal input field

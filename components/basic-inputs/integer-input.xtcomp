@@ -1,5 +1,5 @@
 id: integer-input
 label: Integer Input
 icon: "\U0001F522"
-template: '<IntegerInput name="quantity" label="Quantity" min={0} max={100} step={1} />'
+template: '[% IntegerInput name="quantity" label="Quantity" min={0} max={100} step={1} /%]'
 description: Integer input field

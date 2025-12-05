@@ -1,5 +1,5 @@
 id: text-input
 label: Text Input
 icon: "\U0001F4DD"
-template: '<TextInput name="textField" label="Label" placeholder="Enter text..." />'
+template: '[% TextInput name="textField" label="Label" placeholder="Enter text..." /%]'
 description: Single-line text field

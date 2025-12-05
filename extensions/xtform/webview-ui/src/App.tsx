@@ -40,9 +40,10 @@ export function App() {
 						setRegistry(message.registry);
 					}
 					setAST(message.ast);
-					// For now, convert AST body back to string for Edit View
-					// In Phase 4, we'll implement proper serialization
-					setContent(JSON.stringify(message.ast, null, 2));
+					// Extract data from AST
+					setData(message.ast.data || {});
+					// Use serialized body text for Edit View (markdown format)
+					setContent(message.bodyText);
 					if (message.errors && message.errors.length > 0) {
 						setError(`Parse errors: ${message.errors.map(e => e.message).join(', ')}`);
 					} else {
@@ -74,15 +75,33 @@ export function App() {
 		postMessage({ type: 'updateText', content: newContent });
 	};
 
+	// Handle data changes in Form View
+	const handleDataChange = (fieldName: string, value: any) => {
+		// Update local state immediately for responsive UI
+		setData(prevData => ({
+			...prevData,
+			[fieldName]: value
+		}));
+
+		// Send to extension for persistence
+		postMessage({ type: 'updateData', name: fieldName, value });
+	};
+
+	// Handle component insertion from palette
+	const handleInsertComponent = (template: string) => {
+		console.log('Inserting component template:', template);
+		postMessage({ type: 'insertComponent', template });
+	};
+
 	return (
 		<div className="xtform-editor">
-			<ComponentPalette registry={registry} />
+			<ComponentPalette registry={registry} onInsertComponent={handleInsertComponent} />
 			<div className="editor-main">
 				<TabBar activeTab={activeTab} onTabChange={handleTabSwitch} />
 				{error && <div className="error-banner">{error}</div>}
 				<div className="editor-content">
 					{activeTab === 'form' ? (
-						<FormView ast={ast} data={data} />
+						<FormView ast={ast} data={data} onDataChange={handleDataChange} />
 					) : (
 						<EditTemplateView content={content} onChange={handleContentChange} />
 					)}
