@@ -1,0 +1,151 @@
+{
+  "name": "XTForm",
+  "scopeName": "source.xtform",
+  "patterns": [
+    {
+      "include": "#frontmatter"
+    },
+    {
+      "include": "#component-tag"
+    },
+    {
+      "include": "#markdown-content"
+    }
+  ],
+  "repository": {
+    "frontmatter": {
+      "name": "meta.frontmatter.xtform",
+      "begin": "^---\\s*$",
+      "end": "^---\\s*$",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.frontmatter.xtform"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.frontmatter.xtform"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.yaml"
+        }
+      ]
+    },
+    "component-tag": {
+      "patterns": [
+        {
+          "name": "meta.tag.component.xtform",
+          "begin": "\\[%",
+          "end": "%\\]",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.tag.begin.xtform"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.tag.end.xtform"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#tag-closing"
+            },
+            {
+              "include": "#tag-self-closing"
+            },
+            {
+              "include": "#tag-name"
+            },
+            {
+              "include": "#tag-attribute"
+            }
+          ]
+        }
+      ]
+    },
+    "tag-closing": {
+      "name": "meta.tag.closing.xtform",
+      "match": "(/)(\\w+)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.tag.closing.xtform"
+        },
+        "2": {
+          "name": "entity.name.tag.xtform"
+        }
+      }
+    },
+    "tag-self-closing": {
+      "name": "punctuation.definition.tag.self-closing.xtform",
+      "match": "/"
+    },
+    "tag-name": {
+      "name": "entity.name.tag.xtform",
+      "match": "\\b[A-Z][a-zA-Z]*\\b"
+    },
+    "tag-attribute": {
+      "patterns": [
+        {
+          "name": "meta.attribute.xtform",
+          "match": "([a-zA-Z_][a-zA-Z0-9_\\.]*)\\s*(=)\\s*(\"[^\"]*\"|'[^']*'|\\{[^}]*\\})",
+          "captures": {
+            "1": {
+              "name": "entity.other.attribute-name.xtform"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.xtform"
+            },
+            "3": {
+              "patterns": [
+                {
+                  "name": "string.quoted.double.xtform",
+                  "match": "\"[^\"]*\""
+                },
+                {
+                  "name": "string.quoted.single.xtform",
+                  "match": "'[^']*'"
+                },
+                {
+                  "name": "meta.embedded.expression.xtform",
+                  "match": "\\{[^}]*\\}",
+                  "captures": {
+                    "0": {
+                      "patterns": [
+                        {
+                          "include": "source.ts"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "markdown-content": {
+      "patterns": [
+        {
+          "name": "markup.heading.xtform",
+          "match": "^#{1,6}\\s+.*$"
+        },
+        {
+          "name": "markup.bold.xtform",
+          "match": "\\*\\*[^*]+\\*\\*"
+        },
+        {
+          "name": "markup.italic.xtform",
+          "match": "\\*[^*]+\\*"
+        },
+        {
+          "name": "markup.inline.code.xtform",
+          "match": "`[^`]+`"
+        }
+      ]
+    }
+  }
+}

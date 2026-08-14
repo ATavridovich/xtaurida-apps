@@ -1,0 +1,71 @@
+{
+  "name": "xtform",
+  "displayName": "XTForm Editor",
+  "description": "Custom editor for .xtform files with form preview and template editing",
+  "version": "0.1.0",
+  "publisher": "xtaurida",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:xtform.editor"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "xtform.editor",
+        "displayName": "XTForm Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.xtform"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "languages": [
+      {
+        "id": "xtform",
+        "extensions": [
+          ".xtform"
+        ],
+        "aliases": [
+          "XTForm",
+          "xtform"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "xtform",
+        "scopeName": "source.xtform",
+        "path": "./syntaxes/xtform.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "node esbuild.extension.mts && node esbuild.webview.mts",
+    "watch": "node esbuild.extension.mts --watch",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "glob": "^13.0.6",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "24.x",
+    "@types/vscode": "^1.70.0",
+    "esbuild": "^0.18.0",
+    "mocha": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}

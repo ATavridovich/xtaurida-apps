@@ -1,0 +1,251 @@
+/* XTForm Editor Styles - Using VS Code Theme Variables */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: var(--vscode-font-weight);
+  color: var(--vscode-editor-foreground);
+  background-color: var(--vscode-editor-background);
+}
+
+#root {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Root container */
+.xtform-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Section */
+.xtform-section {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 16px;
+  background-color: var(--vscode-editor-background);
+}
+
+.xtform-section-label {
+  margin: 0 0 12px 0;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding-bottom: 8px;
+}
+
+.xtform-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Collapsible section */
+.xtform-collapsible-section {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 16px;
+  background-color: var(--vscode-editor-background);
+}
+
+.xtform-collapsible-section summary {
+  cursor: pointer;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  list-style: none;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.xtform-collapsible-section summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Tab */
+.xtform-tab {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  padding: 16px;
+  background-color: var(--vscode-editor-background);
+}
+
+.xtform-tab-label {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-editor-foreground);
+}
+
+.xtform-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Form field */
+.xtform-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.xtform-label {
+  font-weight: 500;
+  color: var(--vscode-editor-foreground);
+  font-size: 0.95em;
+}
+
+.xtform-description {
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  margin-top: -4px;
+}
+
+/* Input fields */
+.xtform-input,
+.xtform-textarea,
+.xtform-select {
+  padding: 6px 8px;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.xtform-input:focus,
+.xtform-textarea:focus,
+.xtform-select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.xtform-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Checkbox */
+.xtform-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.xtform-checkbox {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* Radio group */
+.xtform-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.xtform-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.xtform-radio {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* Table */
+.xtform-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.xtform-table-note {
+  font-size: 0.85em;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  padding: 8px;
+  background-color: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: 2px;
+}
+
+.xtform-table-grid {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.xtform-table-grid th,
+.xtform-table-grid td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.xtform-table-grid th {
+  background-color: var(--vscode-editorWidget-background);
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+}
+
+.xtform-table-grid td {
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+.xtform-table-grid tr:hover td {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Error display */
+.xtform-error {
+  padding: 16px;
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  background-color: var(--vscode-inputValidation-errorBackground);
+  border-radius: 4px;
+}
+
+.xtform-error h3 {
+  margin: 0 0 8px 0;
+  color: var(--vscode-errorForeground);
+}
+
+.xtform-error p {
+  margin: 0;
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.9em;
+}
+
+/* Unknown component */
+.xtform-component-unknown {
+  padding: 12px;
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: 4px;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  background-color: var(--vscode-editorWidget-background);
+}
