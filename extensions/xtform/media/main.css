@@ -175,6 +175,13 @@ body {
   height: 16px;
 }
 
+/* Multiple choice */
+.xtform-multiple-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Table */
 .xtform-table {
   display: flex;
@@ -248,4 +255,57 @@ body {
   color: var(--vscode-descriptionForeground);
   font-style: italic;
   background-color: var(--vscode-editorWidget-background);
+}
+
+/* Tabbed sections */
+.xtform-tabbed-section {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.xtform-tab-buttons {
+  display: flex;
+  background-color: var(--vscode-editorGroupHeader-tabsBackground);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.xtform-tab-button {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--vscode-tab-inactiveForeground);
+  cursor: pointer;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  border-right: 1px solid var(--vscode-panel-border);
+  transition: background-color 0.15s;
+}
+
+.xtform-tab-button:last-child {
+  border-right: none;
+}
+
+.xtform-tab-button:hover {
+  background-color: var(--vscode-tab-hoverBackground);
+}
+
+.xtform-tab-button.active {
+  background-color: var(--vscode-tab-activeBackground);
+  color: var(--vscode-tab-activeForeground);
+  border-bottom: 2px solid var(--vscode-tab-activeBorder, var(--vscode-focusBorder));
+}
+
+.xtform-tab-panels {
+  position: relative;
+}
+
+.xtform-tab-panel {
+  display: none;
+  padding: 16px;
+}
+
+.xtform-tab-panel.active {
+  display: block;
 }

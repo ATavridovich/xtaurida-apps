@@ -1,0 +1,38 @@
+---
+uuid: f3a1d820-cc74-4e1b-9a2f-8b3e5c6d7f90
+title: All Components Demo
+description: Demonstration of all basic input components
+version: 1
+data:
+  f-001: John Doe
+  f-002: |-
+    This is a multi-line
+    text e\nxample
+  f-003: 25
+  f-004: 19.99
+  f-005: true
+  f-006: Option2
+  f-007: SMS,Phone
+  f-008: 2024-01-17
+  f-009: 14:30
+  f-010: jane@example.com
+---
+[% TextInput uuid="f-001" label="Full Name" description="Enter your full legal name" placeholder="Enter your name" /%]
+
+[% TextArea uuid="f-002" label="Bio" description="Tell us about yourself" placeholder="Write a short bio..." /%]
+
+[% IntegerInput uuid="f-003" label="Age" description="Your age in years" min_value="0" max_value="150" /%]
+
+[% DecimalInput uuid="f-004" label="Price" description="Product price in USD" min_value="0" step="0.01" placeholder="0.00" /%]
+
+[% Checkbox uuid="f-005" label="Subscribe to newsletter" description="Receive weekly updates" /%]
+
+[% RadioGroup uuid="f-006" label="Preferred Contact Method" description="How should we contact you?" options="Email,Phone,Text,Option2" /%]
+
+[% MultipleChoice uuid="f-007" label="Communication Channels" description="Select all that apply" options="Email,SMS,Phone,Push Notifications" /%]
+
+[% DatePicker uuid="f-008" label="Birth Date" description="Your date of birth" /%]
+
+[% TimePicker uuid="f-009" label="Preferred Time" description="Best time to contact you" /%]
+
+[% Select uuid="f-010" label="Email" description="Your email address" options="john@example.com,jane@example.com,admin@example.com" /%]

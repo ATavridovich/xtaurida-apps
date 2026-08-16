@@ -47,6 +47,9 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
     // Use a nonce to whitelist scripts for CSP
     const nonce = getNonce();
 
+    // Cache-busting version
+    const version = Date.now();
+
     // Script and style URIs
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'media', 'index.js')
@@ -62,12 +65,12 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';" />
-  <link rel="stylesheet" href="${styleUri}" />
+  <link rel="stylesheet" href="${styleUri}?v=${version}" />
   <title>XTForm Editor</title>
 </head>
 <body>
   <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}?v=${version}"></script>
 </body>
 </html>`;
   }
@@ -77,8 +80,9 @@ export class XtformEditorProvider implements vscode.CustomTextEditorProvider {
  * Manages a single xtform editor instance
  */
 class XtformEditor extends Disposable {
-  private isUpdatingFromWebview = false;
   private editQueue = Promise.resolve();
+  private isEditingFromWebview = false;
+  private pendingEdit: Promise<void> | undefined;
 
   constructor(
     private readonly document: vscode.TextDocument,
@@ -96,6 +100,18 @@ class XtformEditor extends Disposable {
       vscode.workspace.onDidChangeTextDocument(e => {
         if (e.document.uri.toString() === this.document.uri.toString()) {
           this.onDocumentChange();
+        }
+      })
+    );
+
+    // Listen for view state changes (when user switches to/from this editor)
+    this._disposables.push(
+      this.panel.onDidChangeViewState(() => {
+        console.log('[XTForm] View state changed, visible:', this.panel.visible);
+        if (this.panel.visible) {
+          // Refresh webview when it becomes visible
+          console.log('[XTForm] Panel became visible, refreshing webview');
+          this.updateWebview();
         }
       })
     );
@@ -134,6 +150,9 @@ class XtformEditor extends Disposable {
    */
   private async applyEdit(uuid: string, value: any): Promise<void> {
     try {
+      // Mark that we're editing from webview
+      this.isEditingFromWebview = true;
+
       // Parse current document
       const doc = parseXtformDocument(this.document.getText());
 
@@ -148,14 +167,23 @@ class XtformEditor extends Disposable {
         newContent
       );
 
-      // Apply edit with flag to prevent feedback loop
-      this.isUpdatingFromWebview = true;
-      try {
-        await vscode.workspace.applyEdit(edit);
-      } finally {
-        this.isUpdatingFromWebview = false;
-      }
+      // Apply edit to document
+      this.pendingEdit = vscode.workspace.applyEdit(edit).then(() => {
+        // Wait a bit for the document change event to fire and complete
+        return new Promise<void>(resolve => {
+          setTimeout(() => {
+            this.isEditingFromWebview = false;
+            this.pendingEdit = undefined;
+            resolve();
+          }, 50);
+        });
+      });
+
+      await this.pendingEdit;
     } catch (error) {
+      this.isEditingFromWebview = false;
+      this.pendingEdit = undefined;
+
       if (error instanceof XtformParseError) {
         vscode.window.showErrorMessage(`Failed to update: ${error.message}`);
       } else {
@@ -168,11 +196,13 @@ class XtformEditor extends Disposable {
    * Handles document changes
    */
   private onDocumentChange(): void {
-    if (this.isUpdatingFromWebview) {
-      // Don't send updates back to webview if we just applied an edit from it
+    // Skip update if we're currently editing from webview
+    // This prevents feedback loops while user is typing
+    if (this.isEditingFromWebview || this.pendingEdit) {
       return;
     }
 
+    // Update webview for external changes (manual edits, undo/redo, etc.)
     this.updateWebview();
   }
 
