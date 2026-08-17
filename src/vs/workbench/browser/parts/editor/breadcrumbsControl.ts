@@ -533,6 +533,10 @@ export class BreadcrumbsControl {
 			const label = current ? editorTypeDisplayLabel(current, available.isDiffEditor) : available.currentId;
 			editorTypeLabel.textContent = label;
 			editorTypeHover.update(localize('editorType.hover', "Editor: {0}", label));
+			// Add data attribute for CSS targeting
+			if (this._editorTypeNode) {
+				this._editorTypeNode.setAttribute('data-editor-type', available.currentId);
+			}
 		}
 
 		// The dropdown width may have changed (different editor label or visibility toggled). Since the

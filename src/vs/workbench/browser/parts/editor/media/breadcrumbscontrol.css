@@ -109,3 +109,8 @@
 .monaco-workbench .monaco-breadcrumbs-picker .highlighting-tree .monaco-highlighted-label .highlight {
 	font-weight: bold;
 }
+
+/* Hide editor type selector for XTForm Viewer */
+.monaco-workbench .breadcrumbs-control.with-editor-type > .breadcrumbs-editor-type[data-editor-type="xtform.editor"] {
+	display: none !important;
+}

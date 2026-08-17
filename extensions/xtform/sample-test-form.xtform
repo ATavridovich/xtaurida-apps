@@ -5,7 +5,7 @@
 "items":
   - "type": "Section"
     "uuid": "s-001"
-    "label": "Personal Information"
+    "label": "Personal Information GGG"
     "items":
       - "type": "TextInput"
         "uuid": "f-001"

@@ -1,7 +1,7 @@
 {
   "name": "xtform",
-  "displayName": "XTForm Editor",
-  "description": "Custom editor for .xtform files with form preview and template editing",
+  "displayName": "XTForm Viewer",
+  "description": "Visual viewer for .xtform files with form designer and property editor",
   "version": "0.1.0",
   "publisher": "xtaurida",
   "license": "MIT",
@@ -19,33 +19,13 @@
     "customEditors": [
       {
         "viewType": "xtform.editor",
-        "displayName": "XTForm Editor",
+        "displayName": "XTForm Viewer",
         "selector": [
           {
             "filenamePattern": "*.xtform"
           }
         ],
-        "priority": "default"
-      }
-    ],
-    "languages": [
-      {
-        "id": "xtform",
-        "extensions": [
-          ".xtform"
-        ],
-        "aliases": [
-          "XTForm",
-          "xtform"
-        ],
-        "configuration": "./language-configuration.json"
-      }
-    ],
-    "grammars": [
-      {
-        "language": "xtform",
-        "scopeName": "source.xtform",
-        "path": "./syntaxes/xtform.tmLanguage.json"
+        "priority": "exclusive"
       }
     ]
   },

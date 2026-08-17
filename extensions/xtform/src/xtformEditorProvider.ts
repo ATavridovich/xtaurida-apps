@@ -206,7 +206,7 @@ export class XtformEditorProvider implements vscode.CustomEditorProvider<XtformD
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <link rel="stylesheet" href="${styleUri}?v=${version}" />
-  <title>XTForm Editor</title>
+  <title>XTForm Viewer</title>
 </head>
 <body>
   <div class="xtform-app">
