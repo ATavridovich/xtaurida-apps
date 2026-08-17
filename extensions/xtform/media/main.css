@@ -100,6 +100,39 @@ body {
   gap: 12px;
 }
 
+/* Form header */
+.xtform-form-header {
+  padding: 20px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--vscode-panel-border);
+  background-color: var(--vscode-editor-background);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.xtform-form-header:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.xtform-form-header.selected {
+  background-color: var(--vscode-list-activeSelectionBackground);
+  border-bottom-color: var(--vscode-focusBorder);
+}
+
+.xtform-form-title {
+  margin: 0 0 8px 0;
+  font-size: 1.8em;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+}
+
+.xtform-form-description {
+  margin: 0;
+  font-size: 1em;
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.5;
+}
+
 /* Form field */
 .xtform-field {
   display: flex;

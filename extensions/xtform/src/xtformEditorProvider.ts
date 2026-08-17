@@ -280,8 +280,41 @@ class XtformEditor extends Disposable {
       })
     );
 
+    // Watch for external file changes using a glob pattern
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (workspaceFolder) {
+      const relativePath = vscode.workspace.asRelativePath(document.uri, false);
+      const fileWatcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(workspaceFolder, relativePath)
+      );
+
+      this._disposables.push(
+        fileWatcher.onDidChange(async () => {
+          // File changed externally - reload it
+          await this.reloadFromDisk();
+        })
+      );
+
+      this._disposables.push(fileWatcher);
+    }
+
     // Send initial content
     this.updateWebview();
+  }
+
+  /**
+   * Reloads document content from disk
+   */
+  private async reloadFromDisk(): Promise<void> {
+    try {
+      const content = await vscode.workspace.fs.readFile(this.document.uri);
+      const textContent = new TextDecoder().decode(content);
+      this.document.setContent(textContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to reload file: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**

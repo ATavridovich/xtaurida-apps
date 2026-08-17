@@ -458,11 +458,19 @@ function renderForm(doc: XtformDocument): void {
   if (!formPreview) return;
 
   try {
-    const html = doc.items
+    // Render form header (clickable to edit form properties)
+    const formHeader = `
+      <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
+        <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')}</h2>
+        ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ''}
+      </div>
+    `;
+
+    const itemsHtml = doc.items
       ? doc.items.map(node => renderNode(node)).join('\n')
       : '<p class="no-selection">No components in form</p>';
 
-    formPreview.innerHTML = groupTabs(html);
+    formPreview.innerHTML = formHeader + groupTabs(itemsHtml);
     setupEventListeners();
   } catch (error) {
     formPreview.innerHTML = `
@@ -561,7 +569,17 @@ function renderPropertyEditor(uuid: string): void {
         <input type="text" class="property-input" value="${node.uuid}" readonly />
       </div>
 
-      ${node.type !== 'Form' ? `
+      ${node.type === 'Form' ? `
+      <div class="property-section">
+        <label class="property-label">Title</label>
+        <input
+          type="text"
+          class="property-input"
+          id="prop-title"
+          value="${escapeHtml(node.title || '')}"
+        />
+      </div>
+      ` : node.type !== 'Form' ? `
       <div class="property-section">
         <label class="property-label">Label</label>
         <input
@@ -593,10 +611,12 @@ function renderPropertyEditor(uuid: string): void {
       </div>
       ` : ''}
 
+      ${node.type !== 'Form' ? `
       <div class="property-actions">
         <button class="btn-danger" id="btn-delete">Delete Component</button>
         <button class="btn-secondary" id="btn-duplicate">Duplicate</button>
       </div>
+      ` : ''}
     </div>
   `;
 
@@ -605,6 +625,14 @@ function renderPropertyEditor(uuid: string): void {
 }
 
 function setupPropertyEditorListeners(uuid: string): void {
+  // Title (for Form)
+  const titleInput = document.getElementById('prop-title') as HTMLInputElement;
+  if (titleInput) {
+    titleInput.addEventListener('input', () => {
+      sendUpdateProperty(uuid, 'title', titleInput.value);
+    });
+  }
+
   // Label
   const labelInput = document.getElementById('prop-label') as HTMLInputElement;
   if (labelInput) {
@@ -845,7 +873,7 @@ window.addEventListener('message', event => {
           let restoredElement: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null = null;
 
           // Try to restore Property Editor fields first (by ID)
-          if (elementId && (elementId.startsWith('prop-') || elementId === 'prop-label' || elementId === 'prop-description' || elementId === 'prop-options')) {
+          if (elementId && (elementId.startsWith('prop-') || elementId === 'prop-title' || elementId === 'prop-label' || elementId === 'prop-description' || elementId === 'prop-options')) {
             restoredElement = document.getElementById(elementId) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
           }
           // Otherwise restore form fields (by data-uuid)

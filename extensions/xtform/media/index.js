@@ -6641,8 +6641,14 @@ ${end.comment}` : end.comment;
     if (!formPreview)
       return;
     try {
-      const html = doc.items ? doc.items.map((node) => renderNode(node)).join("\n") : '<p class="no-selection">No components in form</p>';
-      formPreview.innerHTML = groupTabs(html);
+      const formHeader = `
+      <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
+        <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")}</h2>
+        ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ""}
+      </div>
+    `;
+      const itemsHtml = doc.items ? doc.items.map((node) => renderNode(node)).join("\n") : '<p class="no-selection">No components in form</p>';
+      formPreview.innerHTML = formHeader + groupTabs(itemsHtml);
       setupEventListeners();
     } catch (error) {
       formPreview.innerHTML = `
@@ -6724,7 +6730,17 @@ ${end.comment}` : end.comment;
         <input type="text" class="property-input" value="${node.uuid}" readonly />
       </div>
 
-      ${node.type !== "Form" ? `
+      ${node.type === "Form" ? `
+      <div class="property-section">
+        <label class="property-label">Title</label>
+        <input
+          type="text"
+          class="property-input"
+          id="prop-title"
+          value="${escapeHtml(node.title || "")}"
+        />
+      </div>
+      ` : node.type !== "Form" ? `
       <div class="property-section">
         <label class="property-label">Label</label>
         <input
@@ -6756,16 +6772,24 @@ ${end.comment}` : end.comment;
       </div>
       ` : ""}
 
+      ${node.type !== "Form" ? `
       <div class="property-actions">
         <button class="btn-danger" id="btn-delete">Delete Component</button>
         <button class="btn-secondary" id="btn-duplicate">Duplicate</button>
       </div>
+      ` : ""}
     </div>
   `;
     propertyContent.innerHTML = html;
     setupPropertyEditorListeners(uuid);
   }
   function setupPropertyEditorListeners(uuid) {
+    const titleInput = document.getElementById("prop-title");
+    if (titleInput) {
+      titleInput.addEventListener("input", () => {
+        sendUpdateProperty(uuid, "title", titleInput.value);
+      });
+    }
     const labelInput = document.getElementById("prop-label");
     if (labelInput) {
       labelInput.addEventListener("input", () => {
@@ -6943,7 +6967,7 @@ ${end.comment}` : end.comment;
           renderForm(currentDoc);
           if (hasFocus) {
             let restoredElement = null;
-            if (elementId && (elementId.startsWith("prop-") || elementId === "prop-label" || elementId === "prop-description" || elementId === "prop-options")) {
+            if (elementId && (elementId.startsWith("prop-") || elementId === "prop-title" || elementId === "prop-label" || elementId === "prop-description" || elementId === "prop-options")) {
               restoredElement = document.getElementById(elementId);
             } else if (uuid) {
               if (radioValue !== null) {
