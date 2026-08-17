@@ -6,17 +6,22 @@
 
 body {
   margin: 0;
-  padding: 20px;
+  padding: 0;
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
   font-weight: var(--vscode-font-weight);
   color: var(--vscode-editor-foreground);
   background-color: var(--vscode-editor-background);
+  overflow: hidden;
 }
 
-#root {
-  max-width: 1200px;
-  margin: 0 auto;
+/* Designer App Container */
+.xtform-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
 }
 
 /* Root container */
@@ -308,4 +313,309 @@ body {
 
 .xtform-tab-panel.active {
   display: block;
+}
+
+/* ===== DESIGNER UI STYLES ===== */
+
+/* Component Palette (Top Toolbar) */
+.component-palette {
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.palette-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.palette-tab {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--vscode-font-family);
+  transition: background 0.2s;
+}
+
+.palette-tab:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.palette-tab.active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.palette-components {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.palette-component {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px solid var(--vscode-button-border, transparent);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  transition: all 0.2s;
+}
+
+.palette-component:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.palette-component:active {
+  transform: translateY(0);
+}
+
+.component-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.component-label {
+  font-weight: 500;
+}
+
+/* Editor Container (Property Editor + Form Preview) */
+.editor-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+/* Floating Toggle Button (visible when property editor is collapsed) */
+.property-toggle-float {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  background: var(--vscode-sideBar-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  padding: 8px 6px;
+  cursor: pointer;
+  color: var(--vscode-icon-foreground);
+  font-size: 14px;
+  font-family: var(--vscode-font-family);
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.property-toggle-float:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+/* Property Editor (Left Sidebar) */
+.property-editor {
+  width: 280px;
+  background: var(--vscode-sideBar-background);
+  border-right: 1px solid var(--vscode-panel-border);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.property-editor.collapsed {
+  width: 0;
+  border-right: none;
+}
+
+.property-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBarSectionHeader-background);
+  flex-shrink: 0;
+}
+
+.property-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-sideBarTitle-foreground);
+}
+
+.collapse-btn {
+  background: transparent;
+  border: none;
+  color: var(--vscode-icon-foreground);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 12px;
+  transition: transform 0.3s;
+}
+
+.property-editor.collapsed .collapse-btn {
+  transform: rotate(180deg);
+}
+
+.property-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+}
+
+.no-selection {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 40px;
+}
+
+/* Property Form */
+.property-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.property-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.property-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.property-input,
+.property-textarea {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  padding: 6px 8px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.property-input:focus,
+.property-textarea:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.property-input[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.property-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.property-checkbox {
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+.type-badge {
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-block;
+  width: fit-content;
+}
+
+.property-value {
+  font-size: 12px;
+  color: var(--vscode-foreground);
+}
+
+.property-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-danger,
+.btn-secondary {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 2px;
+  font-size: 12px;
+  font-family: var(--vscode-font-family);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-danger {
+  background: var(--vscode-inputValidation-errorBackground);
+  color: var(--vscode-inputValidation-errorForeground, white);
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.btn-secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Form Preview (Right Panel) */
+.form-preview {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  background: var(--vscode-editor-background);
+  min-width: 0;
+}
+
+/* Component Selection */
+.xtform-component {
+  position: relative;
+  transition: outline 0.2s, background-color 0.2s;
+  border-radius: 2px;
+}
+
+.xtform-component:hover {
+  outline: 1px dashed var(--vscode-focusBorder);
+  outline-offset: 2px;
+}
+
+.xtform-component.selected {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+  background: var(--vscode-list-focusBackground, rgba(0, 122, 204, 0.1)) !important;
 }

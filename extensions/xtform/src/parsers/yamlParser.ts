@@ -1,132 +1,256 @@
-import * as yaml from 'yaml';
-import { XtformDocument, XtformParseError } from './xtformDocument';
+import * as YAML from 'yaml';
+import { XtformDocument, XtformNode, XtformParseError } from './xtformDocument';
 
 /**
- * Parses .xtform document content into structured format
+ * Parses .xtform document content into structured hierarchical format
  *
- * @param content - Raw .xtform file content
+ * @param content - Raw .xtform file content (pure YAML, no templates)
  * @returns Parsed XtformDocument
  * @throws XtformParseError if parsing fails
  */
 export function parseXtformDocument(content: string): XtformDocument {
-  // Split by --- markers
-  const parts = content.split(/^---\s*$/m);
-
-  if (parts.length < 3) {
-    throw new XtformParseError(
-      'Invalid .xtform format: Expected YAML frontmatter between --- markers'
-    );
-  }
-
-  // Extract YAML (between first two --- markers)
-  // parts[0] is empty or whitespace before first ---
-  // parts[1] is the YAML content
-  // parts[2] onwards is the template
-  const rawYaml = parts[1].trim();
-  const template = parts.slice(2).join('---').trim();
-
-  // Parse YAML
-  let parsed: any;
   try {
-    parsed = yaml.parse(rawYaml);
+    const doc = YAML.parse(content);
+
+    // Validate root node
+    if (!doc || typeof doc !== 'object') {
+      throw new XtformParseError('Invalid YAML: root must be an object');
+    }
+
+    if (doc.type !== 'Form') {
+      throw new XtformParseError('Invalid xtform: root type must be "Form"');
+    }
+
+    if (!doc.uuid) {
+      throw new XtformParseError('Invalid xtform: root must have uuid');
+    }
+
+    return doc as XtformDocument;
   } catch (error) {
+    if (error instanceof XtformParseError) {
+      throw error;
+    }
     throw new XtformParseError(
-      `Failed to parse YAML: ${error instanceof Error ? error.message : String(error)}`
+      `YAML parse error: ${error instanceof Error ? error.message : String(error)}`
     );
   }
-
-  // Validate required fields
-  if (!parsed || typeof parsed !== 'object') {
-    throw new XtformParseError('YAML frontmatter must be an object');
-  }
-
-  if (!parsed.uuid || typeof parsed.uuid !== 'string') {
-    throw new XtformParseError('Missing required field: uuid');
-  }
-
-  // Extract uuid and data
-  const { uuid, data, ...meta } = parsed;
-
-  // Validate data field exists
-  if (!data || typeof data !== 'object') {
-    throw new XtformParseError('Missing or invalid required field: data');
-  }
-
-  return {
-    uuid,
-    meta,
-    data,
-    template,
-    rawYaml
-  };
 }
 
 /**
- * Updates a field value in the document's data section
+ * Serializes XtformDocument back to YAML string
+ *
+ * @param doc - XtformDocument to serialize
+ * @returns YAML string representation
+ */
+export function serializeXtformDocument(doc: XtformDocument): string {
+  return YAML.stringify(doc, {
+    indent: 2,
+    lineWidth: 0,
+    defaultStringType: 'QUOTE_DOUBLE'
+  });
+}
+
+/**
+ * Updates a node's value property
  *
  * @param doc - XtformDocument to update
- * @param fieldUuid - UUID of the field to update
- * @param value - New value for the field
- * @returns New document content with updated value
+ * @param uuid - UUID of the node to update
+ * @param value - New value
+ * @returns Updated XtformDocument
  */
-export function updateYamlData(
+export function updateNodeValue(doc: XtformDocument, uuid: string, value: any): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  function findAndUpdate(node: XtformNode | XtformDocument): boolean {
+    if (node.uuid === uuid) {
+      (node as any).value = value;
+      return true;
+    }
+
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        if (findAndUpdate(child)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  findAndUpdate(newDoc);
+  return newDoc;
+}
+
+/**
+ * Updates any property of a node
+ *
+ * @param doc - XtformDocument to update
+ * @param uuid - UUID of the node to update
+ * @param property - Property name (supports 'instructions.*' notation)
+ * @param value - New value
+ * @returns Updated XtformDocument
+ */
+export function updateNodeProperty(
   doc: XtformDocument,
-  fieldUuid: string,
+  uuid: string,
+  property: string,
   value: any
-): string {
-  // Create updated data object
-  const updatedData = {
-    ...doc.data,
-    [fieldUuid]: value
-  };
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
 
-  // Reconstruct full YAML object
-  const yamlObject = {
-    uuid: doc.uuid,
-    ...doc.meta,
-    data: updatedData
-  };
+  function findAndUpdate(node: XtformNode | XtformDocument): boolean {
+    if (node.uuid === uuid) {
+      // Handle instructions.* properties
+      if (property.startsWith('instructions.')) {
+        const key = property.substring('instructions.'.length);
+        if (!node.instructions) {
+          node.instructions = {};
+        }
+        node.instructions[key] = value;
+      } else {
+        (node as any)[property] = value;
+      }
+      return true;
+    }
 
-  // Serialize to YAML
-  const newYaml = yaml.stringify(yamlObject, {
-    indent: 2,
-    lineWidth: 0 // No line wrapping
-  });
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        if (findAndUpdate(child)) {
+          return true;
+        }
+      }
+    }
 
-  // Reconstruct full document
-  return `---\n${newYaml}---\n${doc.template}`;
+    return false;
+  }
+
+  findAndUpdate(newDoc);
+  return newDoc;
 }
 
 /**
- * Updates multiple field values in the document's data section
+ * Adds a new node to the hierarchy
  *
  * @param doc - XtformDocument to update
- * @param updates - Map of field UUIDs to new values
- * @returns New document content with updated values
+ * @param parentUuid - UUID of parent node, or null to add to root
+ * @param node - Node to add
+ * @returns Updated XtformDocument
  */
-export function updateYamlDataMultiple(
+export function addNode(
   doc: XtformDocument,
-  updates: Record<string, any>
-): string {
-  // Create updated data object
-  const updatedData = {
-    ...doc.data,
-    ...updates
-  };
+  parentUuid: string | null,
+  node: XtformNode
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
 
-  // Reconstruct full YAML object
-  const yamlObject = {
-    uuid: doc.uuid,
-    ...doc.meta,
-    data: updatedData
-  };
+  if (parentUuid === null) {
+    // Add to root items
+    if (!newDoc.items) {
+      newDoc.items = [];
+    }
+    newDoc.items.push(node);
+    return newDoc;
+  }
 
-  // Serialize to YAML
-  const newYaml = yaml.stringify(yamlObject, {
-    indent: 2,
-    lineWidth: 0
-  });
+  function findAndAdd(parent: XtformNode | XtformDocument): boolean {
+    if (parent.uuid === parentUuid) {
+      if (!parent.items) {
+        parent.items = [];
+      }
+      parent.items.push(node);
+      return true;
+    }
 
-  // Reconstruct full document
-  return `---\n${newYaml}---\n${doc.template}`;
+    if (parent.items && Array.isArray(parent.items)) {
+      for (const child of parent.items) {
+        if (findAndAdd(child)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  findAndAdd(newDoc);
+  return newDoc;
+}
+
+/**
+ * Deletes a node from the hierarchy
+ *
+ * @param doc - XtformDocument to update
+ * @param uuid - UUID of the node to delete
+ * @returns Updated XtformDocument
+ */
+export function deleteNode(doc: XtformDocument, uuid: string): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  function findAndDelete(parent: XtformNode | XtformDocument): boolean {
+    if (!parent.items || !Array.isArray(parent.items)) {
+      return false;
+    }
+
+    const index = parent.items.findIndex(child => child.uuid === uuid);
+    if (index !== -1) {
+      parent.items.splice(index, 1);
+      return true;
+    }
+
+    for (const child of parent.items) {
+      if (findAndDelete(child)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  findAndDelete(newDoc);
+  return newDoc;
+}
+
+/**
+ * Finds a node by UUID in the hierarchy
+ *
+ * @param doc - XtformDocument to search
+ * @param uuid - UUID to find
+ * @returns Found node, or null if not found
+ */
+export function findNode(
+  doc: XtformDocument,
+  uuid: string
+): XtformNode | XtformDocument | null {
+  if (doc.uuid === uuid) {
+    return doc;
+  }
+
+  function search(node: XtformNode): XtformNode | null {
+    if (node.uuid === uuid) {
+      return node;
+    }
+
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        const result = search(child);
+        if (result) {
+          return result;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  if (doc.items) {
+    for (const item of doc.items) {
+      const result = search(item);
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  return null;
 }

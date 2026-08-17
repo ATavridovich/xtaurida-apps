@@ -1,613 +1,889 @@
-// Webview script for XTForm editor
+// Webview script for XTForm editor - NEW YAML HIERARCHY FORMAT
 // This script runs in the webview context and communicates with the extension
 
 import * as YAML from 'yaml';
 
-// Parse .xtform file content
-const parseYAML = (content: string): any => {
-  const parts = content.split(/^---\s*$/m);
-  if (parts.length < 3) {
-    throw new Error('Invalid .xtform format');
+// Type definitions matching backend
+interface XtformNode {
+  type: string;
+  uuid: string;
+  label?: string;
+  description?: string;
+  instructions?: Record<string, string>;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+  value?: any;
+  options?: string;
+  items?: XtformNode[];
+  data?: any;
+}
+
+interface XtformDocument {
+  type: 'Form';
+  uuid: string;
+  title?: string;
+  description?: string;
+  prompt?: string;
+  elaborate_options?: string[];
+  instructions?: Record<string, string>;
+  items?: XtformNode[];
+}
+
+// Component Registry for Designer Palette
+interface ComponentRegistryEntry {
+  type: string;
+  category: 'inputs' | 'layout' | 'advanced';
+  label: string;
+  icon: string;
+  description: string;
+  createNode: (uuid: string) => XtformNode;
+}
+
+const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
+  // Input Components
+  {
+    type: 'TextInput',
+    category: 'inputs',
+    label: 'Text Input',
+    icon: '📝',
+    description: 'Single-line text field',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'TextInput',
+      uuid,
+      label: 'New Text Input',
+      value: ''
+    })
+  },
+  {
+    type: 'TextArea',
+    category: 'inputs',
+    label: 'Text Area',
+    icon: '📄',
+    description: 'Multi-line text input',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'TextArea',
+      uuid,
+      label: 'New Text Area',
+      value: ''
+    })
+  },
+  {
+    type: 'IntegerInput',
+    category: 'inputs',
+    label: 'Integer',
+    icon: '🔢',
+    description: 'Whole number input',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'IntegerInput',
+      uuid,
+      label: 'New Integer',
+      value: 0
+    })
+  },
+  {
+    type: 'DecimalInput',
+    category: 'inputs',
+    label: 'Decimal',
+    icon: '💰',
+    description: 'Decimal number input',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'DecimalInput',
+      uuid,
+      label: 'New Decimal',
+      value: 0.0
+    })
+  },
+  {
+    type: 'Checkbox',
+    category: 'inputs',
+    label: 'Checkbox',
+    icon: '☑',
+    description: 'Boolean yes/no field',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'Checkbox',
+      uuid,
+      label: 'New Checkbox',
+      value: false
+    })
+  },
+  {
+    type: 'DatePicker',
+    category: 'inputs',
+    label: 'Date Picker',
+    icon: '📅',
+    description: 'Date selection',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'DatePicker',
+      uuid,
+      label: 'Select Date',
+      value: new Date().toISOString().split('T')[0]
+    })
+  },
+  {
+    type: 'TimePicker',
+    category: 'inputs',
+    label: 'Time Picker',
+    icon: '🕐',
+    description: 'Time selection',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'TimePicker',
+      uuid,
+      label: 'Select Time',
+      value: '12:00'
+    })
+  },
+  {
+    type: 'Select',
+    category: 'inputs',
+    label: 'Select',
+    icon: '▼',
+    description: 'Dropdown selection',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'Select',
+      uuid,
+      label: 'New Select',
+      options: 'Option 1,Option 2,Option 3',
+      value: 'Option 1'
+    })
+  },
+  {
+    type: 'RadioGroup',
+    category: 'inputs',
+    label: 'Radio Group',
+    icon: '◉',
+    description: 'Single choice from options',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'RadioGroup',
+      uuid,
+      label: 'Choose One',
+      options: 'Option 1,Option 2,Option 3',
+      value: 'Option 1'
+    })
+  },
+  // Layout Components
+  {
+    type: 'Section',
+    category: 'layout',
+    label: 'Section',
+    icon: '📦',
+    description: 'Visual grouping container',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'Section',
+      uuid,
+      label: 'New Section',
+      items: []
+    })
+  },
+  {
+    type: 'CollapsibleSection',
+    category: 'layout',
+    label: 'Collapsible',
+    icon: '📁',
+    description: 'Expandable/collapsible section',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'CollapsibleSection',
+      uuid,
+      label: 'New Collapsible Section',
+      items: []
+    })
+  },
+  {
+    type: 'Tab',
+    category: 'layout',
+    label: 'Tab',
+    icon: '📑',
+    description: 'Tab panel (auto-groups)',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'Tab',
+      uuid,
+      label: 'New Tab',
+      items: []
+    })
   }
+];
 
-  const yamlStr = parts[1].trim();
-  const template = parts.slice(2).join('---').trim();
-
-  console.log('[XTForm Webview] Parsing YAML frontmatter...');
-
-  // Use proper YAML parser
-  const parsed = YAML.parse(yamlStr);
-
-  console.log('[XTForm Webview] Parsed metadata:', parsed);
-  console.log('[XTForm Webview] UUID:', parsed.uuid);
-  console.log('[XTForm Webview] Data:', parsed.data);
-  console.log('[XTForm Webview] Data keys count:', Object.keys(parsed.data || {}).length);
-
-  return {
-    uuid: parsed.uuid || '',
-    data: parsed.data || {},
-    template
-  };
-};
-
-// Parse component tags from template
-const parseComponentTags = (template: string): any[] => {
-  const tokens = tokenizeTemplate(template);
-  const { components } = buildComponentTree(tokens, 0);
-  return components;
-};
-
-// Tokenize template into tags
-const tokenizeTemplate = (template: string): any[] => {
-  const tokens: any[] = [];
-  const tagPattern = /\[%\s*(\/?)(\w+)(.*?)\s*(\/)?\s*%\]/gs;
-
-  let match: RegExpExecArray | null;
-  while ((match = tagPattern.exec(template)) !== null) {
-    const [fullMatch, closingSlash, componentType, attributesStr, selfClosingSlash] = match;
-    const position = match.index;
-
-    if (closingSlash) {
-      // Closing tag
-      tokens.push({
-        type: 'CLOSE_TAG',
-        componentType,
-        position
-      });
-    } else if (selfClosingSlash) {
-      // Self-closing tag
-      const attributes = parseAttributes(attributesStr.trim());
-      tokens.push({
-        type: 'SELF_CLOSING',
-        componentType,
-        attributes,
-        position
-      });
-    } else {
-      // Opening tag
-      const attributes = parseAttributes(attributesStr.trim());
-      tokens.push({
-        type: 'OPEN_TAG',
-        componentType,
-        attributes,
-        position
-      });
-    }
-  }
-
-  return tokens;
-};
-
-// Build component tree from tokens
-const buildComponentTree = (tokens: any[], startIndex: number): { components: any[]; nextIndex: number } => {
-  const components: any[] = [];
-  let i = startIndex;
-
-  while (i < tokens.length) {
-    const token = tokens[i];
-
-    if (token.type === 'CLOSE_TAG') {
-      // End of current container
-      return { components, nextIndex: i + 1 };
-    }
-
-    if (token.type === 'SELF_CLOSING') {
-      // Self-closing tag - no children
-      components.push({
-        type: token.componentType,
-        uuid: token.attributes?.uuid || '',
-        label: token.attributes?.label,
-        attributes: token.attributes || {},
-        children: [],
-        selfClosing: true
-      });
-      i++;
-    } else if (token.type === 'OPEN_TAG') {
-      // Opening tag - parse children
-      const { components: children, nextIndex } = buildComponentTree(tokens, i + 1);
-
-      components.push({
-        type: token.componentType,
-        uuid: token.attributes?.uuid || '',
-        label: token.attributes?.label,
-        attributes: token.attributes || {},
-        children,
-        selfClosing: false
-      });
-      i = nextIndex;
-    } else {
-      i++;
-    }
-  }
-
-  return { components, nextIndex: i };
-};
-
-// Parse attributes from tag
-const parseAttributes = (attributeStr: string): Record<string, string> => {
-  const attributes: Record<string, string> = {};
-  const attrPattern = /(\w+(?:\.\w+)*)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\})/g;
-
-  let match: RegExpExecArray | null;
-  while ((match = attrPattern.exec(attributeStr)) !== null) {
-    const [, key, doubleQuoted, singleQuoted, braced] = match;
-    const value = doubleQuoted ?? singleQuoted ?? braced ?? '';
-    attributes[key] = value;
-  }
-
-  return attributes;
-};
-
-// Render form HTML
-const renderForm = (components: any[], data: Record<string, any>): string => {
-  // Group consecutive Tab components into TabbedSections
-  const grouped = groupTabs(components);
-  const html = grouped.map(c => renderComponent(c, data)).join('\n');
-  return `<div class="xtform-root">\n${html}\n</div>`;
-};
-
-// Group consecutive Tab components
-const groupTabs = (components: any[]): any[] => {
-  const result: any[] = [];
-  let i = 0;
-
-  while (i < components.length) {
-    const component = components[i];
-
-    if (component.type === 'Tab') {
-      // Collect all consecutive Tabs
-      const tabs: any[] = [component];
-      i++;
-
-      while (i < components.length && components[i].type === 'Tab') {
-        tabs.push(components[i]);
-        i++;
-      }
-
-      // Create a TabbedSection
-      result.push({
-        type: 'TabbedSection',
-        uuid: `tabbed-${tabs[0].uuid}`,
-        label: '',
-        attributes: {},
-        children: tabs,
-        selfClosing: false
-      });
-    } else {
-      result.push(component);
-      i++;
-    }
-  }
-
-  return result;
-};
-
-// Render single component
-const renderComponent = (component: any, data: Record<string, any>): string => {
-  const value = data[component.uuid] || '';
-  const label = component.label || component.attributes.label || '';
-  const description = component.attributes.description || '';
-  const placeholder = component.attributes.placeholder || '';
-
-  switch (component.type) {
-    case 'Section':
-      const sectionChildren = (component.children || []).map((c: any) => renderComponent(c, data)).join('\n');
-      return `<div class="xtform-section">
-        ${label ? `<h3 class="xtform-section-label">${escapeHtml(label)}</h3>` : ''}
-        <div class="xtform-section-content">
-          ${sectionChildren}
-        </div>
-      </div>`;
-
-    case 'CollapsibleSection':
-      const collapsibleChildren = (component.children || []).map((c: any) => renderComponent(c, data)).join('\n');
-      const sectionId = `section-${escapeHtml(component.uuid)}`;
-      return `<details class="xtform-collapsible-section" open>
-        <summary>${escapeHtml(label)}</summary>
-        <div class="xtform-section-content">
-          ${collapsibleChildren}
-        </div>
-      </details>`;
-
-    case 'TabbedSection':
-      // Render tabs with tab navigation
-      const tabs = component.children || [];
-      const tabHeaders = tabs.map((tab: any, index: number) => {
-        const tabLabel = tab.label || tab.attributes.label || `Tab ${index + 1}`;
-        return `<button class="xtform-tab-button ${index === 0 ? 'active' : ''}" data-tab-index="${index}">${escapeHtml(tabLabel)}</button>`;
-      }).join('');
-
-      const tabPanels = tabs.map((tab: any, index: number) => {
-        const tabChildren = (tab.children || []).map((c: any) => renderComponent(c, data)).join('\n');
-        return `<div class="xtform-tab-panel ${index === 0 ? 'active' : ''}" data-tab-index="${index}">
-          ${tabChildren}
-        </div>`;
-      }).join('');
-
-      return `<div class="xtform-tabbed-section">
-        <div class="xtform-tab-buttons">
-          ${tabHeaders}
-        </div>
-        <div class="xtform-tab-panels">
-          ${tabPanels}
-        </div>
-      </div>`;
-
-    case 'TextInput':
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <input
-          type="text"
-          class="xtform-input"
-          data-uuid="${escapeHtml(component.uuid)}"
-          value="${escapeHtml(String(value))}"
-          ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ''}
-        />
-      </div>`;
-
-    case 'TextArea':
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <textarea
-          class="xtform-textarea"
-          data-uuid="${escapeHtml(component.uuid)}"
-          ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ''}
-        >${escapeHtml(String(value))}</textarea>
-      </div>`;
-
-    case 'IntegerInput':
-      const minInt = component.attributes.min_value || '';
-      const maxInt = component.attributes.max_value || '';
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <input
-          type="number"
-          step="1"
-          class="xtform-input"
-          data-uuid="${escapeHtml(component.uuid)}"
-          value="${escapeHtml(String(value))}"
-          ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ''}
-          ${minInt ? `min="${escapeHtml(minInt)}"` : ''}
-          ${maxInt ? `max="${escapeHtml(maxInt)}"` : ''}
-        />
-      </div>`;
-
-    case 'DecimalInput':
-      const minDec = component.attributes.min_value || '';
-      const maxDec = component.attributes.max_value || '';
-      const step = component.attributes.step || '0.01';
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <input
-          type="number"
-          step="${escapeHtml(step)}"
-          class="xtform-input"
-          data-uuid="${escapeHtml(component.uuid)}"
-          value="${escapeHtml(String(value))}"
-          ${placeholder ? `placeholder="${escapeHtml(placeholder)}"` : ''}
-          ${minDec ? `min="${escapeHtml(minDec)}"` : ''}
-          ${maxDec ? `max="${escapeHtml(maxDec)}"` : ''}
-        />
-      </div>`;
-
-    case 'Checkbox':
-      const checked = value === true || value === 'true';
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        <label class="xtform-checkbox-label">
-          <input
-            type="checkbox"
-            class="xtform-checkbox"
-            data-uuid="${escapeHtml(component.uuid)}"
-            ${checked ? 'checked' : ''}
-          />
-          ${escapeHtml(label)}
-        </label>
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-      </div>`;
-
-    case 'RadioGroup':
-      const radioOptions = (component.attributes.options || '').split(',').map((opt: string) => opt.trim()).filter((opt: string) => opt);
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <div class="xtform-radio-group">
-          ${radioOptions.map((opt: string) => `
-            <label class="xtform-radio-label">
-              <input
-                type="radio"
-                class="xtform-radio"
-                name="radio-${escapeHtml(component.uuid)}"
-                data-uuid="${escapeHtml(component.uuid)}"
-                value="${escapeHtml(opt)}"
-                ${value === opt ? 'checked' : ''}
-              />
-              ${escapeHtml(opt)}
-            </label>
-          `).join('\n')}
-        </div>
-      </div>`;
-
-    case 'MultipleChoice':
-      const multiOptions = (component.attributes.options || '').split(',').map((opt: string) => opt.trim()).filter((opt: string) => opt);
-      const selectedValues = Array.isArray(value) ? value : (value ? String(value).split(',') : []);
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <div class="xtform-multiple-choice">
-          ${multiOptions.map((opt: string) => `
-            <label class="xtform-checkbox-label">
-              <input
-                type="checkbox"
-                class="xtform-multiple-choice-option"
-                data-uuid="${escapeHtml(component.uuid)}"
-                value="${escapeHtml(opt)}"
-                ${selectedValues.includes(opt) ? 'checked' : ''}
-              />
-              ${escapeHtml(opt)}
-            </label>
-          `).join('\n')}
-        </div>
-      </div>`;
-
-    case 'DatePicker':
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <input
-          type="date"
-          class="xtform-input"
-          data-uuid="${escapeHtml(component.uuid)}"
-          value="${escapeHtml(String(value))}"
-        />
-      </div>`;
-
-    case 'TimePicker':
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <input
-          type="time"
-          class="xtform-input"
-          data-uuid="${escapeHtml(component.uuid)}"
-          value="${escapeHtml(String(value))}"
-        />
-      </div>`;
-
-    case 'Select':
-      const optionsStr = component.attributes.options || '';
-      const options = optionsStr.split(',').map((opt: string) => opt.trim()).filter((opt: string) => opt);
-      return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
-        ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
-        ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
-        <select class="xtform-select" data-uuid="${escapeHtml(component.uuid)}">
-          <option value="">-- Select --</option>
-          ${options.map((opt: string) =>
-            `<option value="${escapeHtml(opt)}" ${value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
-          ).join('\n')}
-        </select>
-      </div>`;
-
-    default:
-      return `<div class="xtform-component-unknown">Unknown component: ${escapeHtml(component.type)}</div>`;
-  }
-};
-
-// Escape HTML
-const escapeHtml = (text: string): string => {
-  const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#039;'
-  };
-  return text.replace(/[&<>"']/g, char => map[char]);
-};
-
-// VS Code API
-declare function acquireVsCodeApi(): any;
+// Global state
+let currentDoc: XtformDocument | null = null;
+let selectedUuid: string | null = null;
 const vscode = acquireVsCodeApi();
 
-// Main webview logic
-let currentContent = '';
+// === RENDERING FUNCTIONS ===
 
-// Handle messages from extension
-window.addEventListener('message', (event) => {
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function renderNode(node: XtformNode): string {
+  const handlers: Record<string, (node: XtformNode) => string> = {
+    'TextInput': renderTextInput,
+    'TextArea': renderTextArea,
+    'IntegerInput': renderIntegerInput,
+    'DecimalInput': renderDecimalInput,
+    'Checkbox': renderCheckbox,
+    'DatePicker': renderDatePicker,
+    'TimePicker': renderTimePicker,
+    'Select': renderSelect,
+    'RadioGroup': renderRadioGroup,
+    'Section': renderSection,
+    'CollapsibleSection': renderCollapsibleSection,
+    'Tab': renderTab,
+  };
+
+  const handler = handlers[node.type];
+  if (!handler) {
+    return renderUnknown(node);
+  }
+
+  return handler(node);
+}
+
+function renderTextInput(node: XtformNode): string {
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <input
+        type="text"
+        class="xtform-input"
+        data-uuid="${node.uuid}"
+        value="${escapeHtml(String(node.value || ''))}"
+      />
+    </div>
+  `;
+}
+
+function renderTextArea(node: XtformNode): string {
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <textarea
+        class="xtform-textarea"
+        data-uuid="${node.uuid}"
+      >${escapeHtml(String(node.value || ''))}</textarea>
+    </div>
+  `;
+}
+
+function renderIntegerInput(node: XtformNode): string {
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <input
+        type="number"
+        step="1"
+        class="xtform-input"
+        data-uuid="${node.uuid}"
+        value="${node.value || 0}"
+      />
+    </div>
+  `;
+}
+
+function renderDecimalInput(node: XtformNode): string {
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <input
+        type="number"
+        step="0.01"
+        class="xtform-input"
+        data-uuid="${node.uuid}"
+        value="${node.value || 0.0}"
+      />
+    </div>
+  `;
+}
+
+function renderCheckbox(node: XtformNode): string {
+  const checked = node.value === true ? 'checked' : '';
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <label class="xtform-checkbox-label">
+        <input
+          type="checkbox"
+          class="xtform-checkbox"
+          data-uuid="${node.uuid}"
+          ${checked}
+        />
+        ${node.label ? escapeHtml(node.label) : 'Checkbox'}
+      </label>
+    </div>
+  `;
+}
+
+function renderDatePicker(node: XtformNode): string {
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <input
+        type="date"
+        class="xtform-input"
+        data-uuid="${node.uuid}"
+        value="${node.value || ''}"
+      />
+    </div>
+  `;
+}
+
+function renderTimePicker(node: XtformNode): string {
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <input
+        type="time"
+        class="xtform-input"
+        data-uuid="${node.uuid}"
+        value="${node.value || '12:00'}"
+      />
+    </div>
+  `;
+}
+
+function renderSelect(node: XtformNode): string {
+  const options = (node.options || '').split(',').map(opt => opt.trim());
+  const optionsHtml = options.map(opt =>
+    `<option value="${escapeHtml(opt)}" ${node.value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+  ).join('');
+
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <select class="xtform-select" data-uuid="${node.uuid}">
+        ${optionsHtml}
+      </select>
+    </div>
+  `;
+}
+
+function renderRadioGroup(node: XtformNode): string {
+  const options = (node.options || '').split(',').map(opt => opt.trim());
+  const optionsHtml = options.map((opt, idx) => {
+    const radioId = `${node.uuid}-${idx}`;
+    return `
+      <label class="xtform-radio-label">
+        <input
+          type="radio"
+          class="xtform-radio"
+          name="${node.uuid}"
+          data-uuid="${node.uuid}"
+          value="${escapeHtml(opt)}"
+          ${node.value === opt ? 'checked' : ''}
+        />
+        ${escapeHtml(opt)}
+      </label>
+    `;
+  }).join('');
+
+  return `
+    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <div class="xtform-radio-group">
+        ${optionsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderSection(node: XtformNode): string {
+  const childrenHtml = node.items
+    ? node.items.map(child => renderNode(child)).join('\n')
+    : '';
+
+  return `
+    <div class="xtform-section xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}</h2>` : ''}
+      <div class="xtform-section-content">
+        ${childrenHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderCollapsibleSection(node: XtformNode): string {
+  const childrenHtml = node.items
+    ? node.items.map(child => renderNode(child)).join('\n')
+    : '';
+
+  return `
+    <details class="xtform-collapsible-section xtform-component" data-uuid="${node.uuid}" open>
+      <summary>${node.label ? escapeHtml(node.label) : 'Collapsible Section'}</summary>
+      <div class="xtform-section-content">
+        ${childrenHtml}
+      </div>
+    </details>
+  `;
+}
+
+function renderTab(node: XtformNode): string {
+  const childrenHtml = node.items
+    ? node.items.map(child => renderNode(child)).join('\n')
+    : '';
+
+  return `
+    <div class="xtform-tab xtform-component" data-uuid="${node.uuid}">
+      <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : 'Tab'}</div>
+      <div class="xtform-tab-content">
+        ${childrenHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderUnknown(node: XtformNode): string {
+  return `
+    <div class="xtform-component-unknown xtform-component" data-uuid="${node.uuid}">
+      Unknown component type: ${escapeHtml(node.type)}
+    </div>
+  `;
+}
+
+// Group consecutive Tab elements into TabbedSection
+function groupTabs(html: string): string {
+  // Simple implementation - can be enhanced later
+  return html;
+}
+
+function renderForm(doc: XtformDocument): void {
+  const formPreview = document.getElementById('form-preview');
+  if (!formPreview) return;
+
+  try {
+    const html = doc.items
+      ? doc.items.map(node => renderNode(node)).join('\n')
+      : '<p class="no-selection">No components in form</p>';
+
+    formPreview.innerHTML = groupTabs(html);
+    setupEventListeners();
+  } catch (error) {
+    formPreview.innerHTML = `
+      <div class="xtform-error">
+        <h3>Render Error</h3>
+        <p>${escapeHtml(String(error))}</p>
+      </div>
+    `;
+  }
+}
+
+// === EVENT LISTENERS ===
+
+function setupEventListeners(): void {
+  // Component selection
+  document.querySelectorAll('.xtform-component').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const uuid = (el as HTMLElement).getAttribute('data-uuid');
+      if (uuid) {
+        selectComponent(uuid);
+      }
+    });
+  });
+
+  // Value change listeners
+  document.querySelectorAll('[data-uuid]').forEach(el => {
+    const element = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const uuid = element.getAttribute('data-uuid');
+    if (!uuid) return;
+
+    if (element.type === 'checkbox') {
+      element.addEventListener('change', () => {
+        sendUpdateValue(uuid, (element as HTMLInputElement).checked);
+      });
+    } else if (element.type === 'radio') {
+      element.addEventListener('change', () => {
+        if ((element as HTMLInputElement).checked) {
+          sendUpdateValue(uuid, element.value);
+        }
+      });
+    } else if (element.type === 'number') {
+      element.addEventListener('input', () => {
+        const value = parseFloat(element.value);
+        sendUpdateValue(uuid, isNaN(value) ? 0 : value);
+      });
+    } else {
+      element.addEventListener('input', () => {
+        sendUpdateValue(uuid, element.value);
+      });
+    }
+  });
+}
+
+function selectComponent(uuid: string): void {
+  // Remove previous selection
+  document.querySelectorAll('.xtform-component.selected').forEach(el => {
+    el.classList.remove('selected');
+  });
+
+  // Add new selection
+  const element = document.querySelector(`.xtform-component[data-uuid="${uuid}"]`);
+  if (element) {
+    element.classList.add('selected');
+    selectedUuid = uuid;
+    renderPropertyEditor(uuid);
+  }
+}
+
+// === PROPERTY EDITOR ===
+
+function renderPropertyEditor(uuid: string): void {
+  const propertyContent = document.getElementById('property-content');
+  if (!propertyContent || !currentDoc) return;
+
+  const node = findNode(currentDoc, uuid);
+  if (!node) {
+    propertyContent.innerHTML = '<p class="no-selection">Component not found</p>';
+    return;
+  }
+
+  const isScalarField = [
+    'TextInput', 'TextArea', 'IntegerInput', 'DecimalInput',
+    'Checkbox', 'DatePicker', 'TimePicker', 'Select', 'RadioGroup'
+  ].includes(node.type);
+
+  const html = `
+    <div class="property-form">
+      <div class="property-section">
+        <label class="property-label">Type</label>
+        <span class="type-badge">${node.type}</span>
+      </div>
+
+      <div class="property-section">
+        <label class="property-label">UUID</label>
+        <input type="text" class="property-input" value="${node.uuid}" readonly />
+      </div>
+
+      ${node.type !== 'Form' ? `
+      <div class="property-section">
+        <label class="property-label">Label</label>
+        <input
+          type="text"
+          class="property-input"
+          id="prop-label"
+          value="${escapeHtml(node.label || '')}"
+        />
+      </div>
+      ` : ''}
+
+      <div class="property-section">
+        <label class="property-label">Description</label>
+        <textarea
+          class="property-textarea"
+          id="prop-description"
+        >${escapeHtml(node.description || '')}</textarea>
+      </div>
+
+      ${isScalarField ? `
+      <div class="property-section">
+        <label class="property-label">Value</label>
+        <input
+          type="text"
+          class="property-input"
+          id="prop-value"
+          value="${escapeHtml(String(node.value || ''))}"
+        />
+      </div>
+      ` : ''}
+
+      ${node.type === 'Select' || node.type === 'RadioGroup' ? `
+      <div class="property-section">
+        <label class="property-label">Options (comma-separated)</label>
+        <input
+          type="text"
+          class="property-input"
+          id="prop-options"
+          value="${escapeHtml(node.options || '')}"
+        />
+      </div>
+      ` : ''}
+
+      <div class="property-actions">
+        <button class="btn-danger" id="btn-delete">Delete Component</button>
+        <button class="btn-secondary" id="btn-duplicate">Duplicate</button>
+      </div>
+    </div>
+  `;
+
+  propertyContent.innerHTML = html;
+  setupPropertyEditorListeners(uuid);
+}
+
+function setupPropertyEditorListeners(uuid: string): void {
+  // Label
+  const labelInput = document.getElementById('prop-label') as HTMLInputElement;
+  if (labelInput) {
+    labelInput.addEventListener('input', () => {
+      sendUpdateProperty(uuid, 'label', labelInput.value);
+    });
+  }
+
+  // Description
+  const descInput = document.getElementById('prop-description') as HTMLTextAreaElement;
+  if (descInput) {
+    descInput.addEventListener('input', () => {
+      sendUpdateProperty(uuid, 'description', descInput.value);
+    });
+  }
+
+  // Value
+  const valueInput = document.getElementById('prop-value') as HTMLInputElement;
+  if (valueInput) {
+    valueInput.addEventListener('input', () => {
+      sendUpdateProperty(uuid, 'value', valueInput.value);
+    });
+  }
+
+  // Options
+  const optionsInput = document.getElementById('prop-options') as HTMLInputElement;
+  if (optionsInput) {
+    optionsInput.addEventListener('input', () => {
+      sendUpdateProperty(uuid, 'options', optionsInput.value);
+    });
+  }
+
+  // Delete button
+  const deleteBtn = document.getElementById('btn-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', () => {
+      if (confirm('Delete this component?')) {
+        sendDeleteComponent(uuid);
+      }
+    });
+  }
+
+  // Duplicate button
+  const duplicateBtn = document.getElementById('btn-duplicate');
+  if (duplicateBtn) {
+    duplicateBtn.addEventListener('click', () => {
+      sendDuplicateComponent(uuid);
+    });
+  }
+}
+
+// === COMPONENT PALETTE ===
+
+function renderComponentPalette(category: string): void {
+  const container = document.getElementById('palette-components');
+  if (!container) return;
+
+  const components = COMPONENT_REGISTRY.filter(c => c.category === category);
+
+  container.innerHTML = components.map(comp => `
+    <button class="palette-component"
+            data-type="${comp.type}"
+            title="${comp.description}">
+      <span class="component-icon">${comp.icon}</span>
+      <span class="component-label">${comp.label}</span>
+    </button>
+  `).join('');
+
+  // Attach click handlers
+  container.querySelectorAll('.palette-component').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const type = btn.getAttribute('data-type');
+      if (type) {
+        handleAddComponent(type);
+      }
+    });
+  });
+}
+
+function handleAddComponent(type: string): void {
+  const definition = COMPONENT_REGISTRY.find(c => c.type === type);
+  if (!definition) return;
+
+  const uuid = generateUuid();
+  const node = definition.createNode(uuid);
+
+  // Determine parent: if component is selected and is a container, add as child
+  // Otherwise add to root
+  let parentUuid: string | null = null;
+  if (selectedUuid && currentDoc) {
+    const selectedNode = findNode(currentDoc, selectedUuid);
+    if (selectedNode && isContainer(selectedNode.type)) {
+      parentUuid = selectedUuid;
+    }
+  }
+
+  sendAddComponent(parentUuid, node);
+}
+
+// === PROPERTY EDITOR COLLAPSE ===
+
+function setupPropertyEditorCollapse(): void {
+  const collapseBtn = document.getElementById('collapse-properties');
+  const floatBtn = document.getElementById('property-toggle-float');
+  const propertyEditor = document.getElementById('property-editor');
+
+  if (!collapseBtn || !floatBtn || !propertyEditor) return;
+
+  const toggleCollapse = () => {
+    const isCollapsed = propertyEditor.classList.toggle('collapsed');
+
+    // Toggle floating button visibility
+    if (isCollapsed) {
+      floatBtn.style.display = 'block';
+    } else {
+      floatBtn.style.display = 'none';
+    }
+
+    // Save state
+    localStorage.setItem('xtform-property-editor-collapsed', String(isCollapsed));
+  };
+
+  // Attach to both buttons
+  collapseBtn.addEventListener('click', toggleCollapse);
+  floatBtn.addEventListener('click', toggleCollapse);
+
+  // Restore collapse state on load
+  const collapsed = localStorage.getItem('xtform-property-editor-collapsed');
+  if (collapsed === 'true') {
+    propertyEditor.classList.add('collapsed');
+    floatBtn.style.display = 'block';
+  }
+}
+
+// === HELPER FUNCTIONS ===
+
+function generateUuid(): string {
+  return 'f-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+}
+
+function isContainer(type: string): boolean {
+  return ['Section', 'CollapsibleSection', 'Tab', 'Form'].includes(type);
+}
+
+function findNode(doc: XtformDocument, uuid: string): XtformNode | XtformDocument | null {
+  if (doc.uuid === uuid) {
+    return doc;
+  }
+
+  function search(node: XtformNode): XtformNode | null {
+    if (node.uuid === uuid) {
+      return node;
+    }
+
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        const result = search(child);
+        if (result) {
+          return result;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  if (doc.items) {
+    for (const item of doc.items) {
+      const result = search(item);
+      if (result) {
+        return result;
+      }
+    }
+  }
+
+  return null;
+}
+
+// === MESSAGE HANDLERS ===
+
+function sendUpdateValue(uuid: string, value: any): void {
+  vscode.postMessage({
+    type: 'updateValue',
+    uuid,
+    value
+  });
+}
+
+function sendUpdateProperty(uuid: string, property: string, value: any): void {
+  vscode.postMessage({
+    type: 'updateProperty',
+    uuid,
+    property,
+    value
+  });
+}
+
+function sendAddComponent(parentUuid: string | null, node: XtformNode): void {
+  vscode.postMessage({
+    type: 'addComponent',
+    parentUuid,
+    node
+  });
+}
+
+function sendDeleteComponent(uuid: string): void {
+  vscode.postMessage({
+    type: 'deleteComponent',
+    uuid
+  });
+}
+
+function sendDuplicateComponent(uuid: string): void {
+  vscode.postMessage({
+    type: 'duplicateComponent',
+    uuid
+  });
+}
+
+// === INITIALIZATION ===
+
+window.addEventListener('message', event => {
   const message = event.data;
-  console.log('[XTForm Webview] Received message:', message.type);
 
   switch (message.type) {
     case 'update':
-      console.log('[XTForm Webview] Content length:', message.content?.length);
-      updateForm(message.content);
+      try {
+        currentDoc = YAML.parse(message.content) as XtformDocument;
+        renderForm(currentDoc);
+      } catch (error) {
+        const formPreview = document.getElementById('form-preview');
+        if (formPreview) {
+          formPreview.innerHTML = `
+            <div class="xtform-error">
+              <h3>Parse Error</h3>
+              <p>${escapeHtml(String(error))}</p>
+            </div>
+          `;
+        }
+      }
       break;
   }
 });
 
-// Update form with new content
-const updateForm = (content: string): void => {
-  currentContent = content;
-  console.log('[XTForm Webview] updateForm called, content length:', content?.length);
-  console.log('[XTForm Webview] Content preview:', content?.substring(0, 200));
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+  // Setup palette tabs
+  document.querySelectorAll('.palette-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Update active tab
+      document.querySelectorAll('.palette-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
 
-  try {
-    const doc = parseYAML(content);
-    console.log('[XTForm Webview] Parsed YAML data:', JSON.stringify(doc.data, null, 2));
-    console.log('[XTForm Webview] Data keys:', Object.keys(doc.data));
-    console.log('[XTForm Webview] Template length:', doc.template?.length);
-
-    const components = parseComponentTags(doc.template);
-    console.log('[XTForm Webview] Found components:', components.length);
-    console.log('[XTForm Webview] Components:', components);
-
-    const formHtml = renderForm(components, doc.data);
-    console.log('[XTForm Webview] Generated HTML length:', formHtml.length);
-
-    const root = document.getElementById('root');
-    if (root) {
-      console.log('[XTForm Webview] Setting innerHTML to root');
-      root.innerHTML = formHtml;
-      attachEventListeners();
-      console.log('[XTForm Webview] Form updated successfully');
-    } else {
-      console.error('[XTForm Webview] Root element not found!');
-    }
-  } catch (error) {
-    console.error('[XTForm Webview] Error in updateForm:', error);
-    const root = document.getElementById('root');
-    if (root) {
-      root.innerHTML = `
-        <div class="xtform-error">
-          <h3>Error parsing document</h3>
-          <p>${escapeHtml(String(error))}</p>
-        </div>
-      `;
-    }
-    vscode.postMessage({
-      type: 'error',
-      message: String(error)
-    });
-  }
-};
-
-// Attach event listeners to form inputs
-const attachEventListeners = (): void => {
-  // Text inputs (TextInput, IntegerInput, DecimalInput, DatePicker, TimePicker)
-  document.querySelectorAll('.xtform-input').forEach(input => {
-    const element = input as HTMLInputElement;
-    const uuid = element.getAttribute('data-uuid');
-
-    if (uuid) {
-      element.addEventListener('input', () => {
-        vscode.postMessage({
-          type: 'edit',
-          uuid,
-          value: element.value
-        });
-      });
-    }
-  });
-
-  // Text areas
-  document.querySelectorAll('.xtform-textarea').forEach(textarea => {
-    const element = textarea as HTMLTextAreaElement;
-    const uuid = element.getAttribute('data-uuid');
-
-    if (uuid) {
-      element.addEventListener('input', () => {
-        vscode.postMessage({
-          type: 'edit',
-          uuid,
-          value: element.value
-        });
-      });
-    }
-  });
-
-  // Checkboxes
-  document.querySelectorAll('.xtform-checkbox').forEach(checkbox => {
-    const element = checkbox as HTMLInputElement;
-    const uuid = element.getAttribute('data-uuid');
-
-    if (uuid) {
-      element.addEventListener('change', () => {
-        vscode.postMessage({
-          type: 'edit',
-          uuid,
-          value: element.checked
-        });
-      });
-    }
-  });
-
-  // Radio buttons
-  document.querySelectorAll('.xtform-radio').forEach(radio => {
-    const element = radio as HTMLInputElement;
-    const uuid = element.getAttribute('data-uuid');
-
-    if (uuid) {
-      element.addEventListener('change', () => {
-        if (element.checked) {
-          vscode.postMessage({
-            type: 'edit',
-            uuid,
-            value: element.value
-          });
-        }
-      });
-    }
-  });
-
-  // Multiple choice (collect all checked values)
-  const multipleChoiceFields = new Map<string, HTMLInputElement[]>();
-  document.querySelectorAll('.xtform-multiple-choice-option').forEach(checkbox => {
-    const element = checkbox as HTMLInputElement;
-    const uuid = element.getAttribute('data-uuid');
-
-    if (uuid) {
-      if (!multipleChoiceFields.has(uuid)) {
-        multipleChoiceFields.set(uuid, []);
-      }
-      multipleChoiceFields.get(uuid)!.push(element);
-
-      element.addEventListener('change', () => {
-        const checkboxes = multipleChoiceFields.get(uuid)!;
-        const selectedValues = checkboxes
-          .filter(cb => cb.checked)
-          .map(cb => cb.value);
-
-        vscode.postMessage({
-          type: 'edit',
-          uuid,
-          value: selectedValues.join(',')
-        });
-      });
-    }
-  });
-
-  // Select dropdowns
-  document.querySelectorAll('.xtform-select').forEach(select => {
-    const element = select as HTMLSelectElement;
-    const uuid = element.getAttribute('data-uuid');
-
-    if (uuid) {
-      element.addEventListener('change', () => {
-        vscode.postMessage({
-          type: 'edit',
-          uuid,
-          value: element.value
-        });
-      });
-    }
-  });
-
-  // Tab buttons
-  document.querySelectorAll('.xtform-tab-button').forEach(button => {
-    const element = button as HTMLButtonElement;
-    element.addEventListener('click', () => {
-      const tabIndex = element.getAttribute('data-tab-index');
-      const tabbedSection = element.closest('.xtform-tabbed-section');
-
-      if (tabbedSection && tabIndex !== null) {
-        // Deactivate all tabs in this section
-        tabbedSection.querySelectorAll('.xtform-tab-button').forEach(btn => btn.classList.remove('active'));
-        tabbedSection.querySelectorAll('.xtform-tab-panel').forEach(panel => panel.classList.remove('active'));
-
-        // Activate clicked tab
-        element.classList.add('active');
-        const panel = tabbedSection.querySelector(`.xtform-tab-panel[data-tab-index="${tabIndex}"]`);
-        if (panel) {
-          panel.classList.add('active');
-        }
+      // Render components for selected category
+      const category = tab.getAttribute('data-category');
+      if (category) {
+        renderComponentPalette(category as any);
       }
     });
   });
-};
 
-// Send ready message when webview loads
-console.log('[XTForm Webview] Sending ready message');
-vscode.postMessage({ type: 'ready' });
+  // Render initial palette (inputs)
+  renderComponentPalette('inputs');
+
+  // Setup property editor collapse
+  setupPropertyEditorCollapse();
+
+  // Signal ready to extension
+  vscode.postMessage({ type: 'ready' });
+});
