@@ -1,48 +1,48 @@
-type: Form
-uuid: "test-001"
-title: "Test Form"
-description: "Sample form for testing new YAML hierarchy format"
-items:
-  - type: Section
-    uuid: "s-001"
-    label: "Personal Information"
-    items:
-      - type: TextInput
-        uuid: "f-001"
-        label: "Full Name"
-        description: "Enter your full name"
-        value: "John Doe"
-      - type: IntegerInput
-        uuid: "f-002"
-        label: "Age"
-        value: 30
-      - type: Checkbox
-        uuid: "f-003"
-        label: "Subscribe to newsletter"
-        value: true
-  - type: Tab
-    uuid: "t-001"
-    label: "Address"
-    items:
-      - type: TextInput
-        uuid: "f-004"
-        label: "Street"
-        value: "123 Main St"
-      - type: TextInput
-        uuid: "f-005"
-        label: "City"
-        value: "Springfield"
-  - type: Tab
-    uuid: "t-002"
-    label: "Preferences"
-    items:
-      - type: Select
-        uuid: "f-006"
-        label: "Theme"
-        options: "Light,Dark,Auto"
-        value: "Auto"
-      - type: RadioGroup
-        uuid: "f-007"
-        label: "Language"
-        options: "English,Spanish,French"
-        value: "English"
+"type": "Form"
+"uuid": "test-001"
+"title": "Test Form"
+"description": "Sample form for testing new YAML hierarchy format"
+"items":
+  - "type": "Section"
+    "uuid": "s-001"
+    "label": "Personal Information"
+    "items":
+      - "type": "TextInput"
+        "uuid": "f-001"
+        "label": "Full Name"
+        "description": "Enter your full name"
+        "value": "John Doe123123"
+      - "type": "IntegerInput"
+        "uuid": "f-002"
+        "label": "Age"
+        "value": 3099
+      - "type": "Checkbox"
+        "uuid": "f-003"
+        "label": "Subscribe to newsletter"
+        "value": true
+  - "type": "Tab"
+    "uuid": "t-001"
+    "label": "Address"
+    "items":
+      - "type": "TextInput"
+        "uuid": "f-004"
+        "label": "Street"
+        "value": "123 Main St"
+      - "type": "TextInput"
+        "uuid": "f-005"
+        "label": "City"
+        "value": "Springfield"
+  - "type": "Tab"
+    "uuid": "t-002"
+    "label": "Preferences"
+    "items":
+      - "type": "Select"
+        "uuid": "f-006"
+        "label": "Theme"
+        "options": "Light,Dark,Auto"
+        "value": "Auto"
+      - "type": "RadioGroup"
+        "uuid": "f-007"
+        "label": "Language"
+        "options": "English,Spanish,French"
+        "value": "English"

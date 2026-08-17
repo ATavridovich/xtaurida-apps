@@ -82,6 +82,9 @@ class XtformDocument implements vscode.CustomDocument {
 export class XtformEditorProvider implements vscode.CustomEditorProvider<XtformDocument> {
   public static readonly viewType = 'xtform.editor';
 
+  private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentContentChangeEvent<XtformDocument>>();
+  public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
+
   constructor(
     private readonly extensionUri: vscode.Uri
   ) { }
@@ -116,11 +119,23 @@ export class XtformEditorProvider implements vscode.CustomEditorProvider<XtformD
     // Set initial HTML
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
+    // Listen to document changes and notify VS Code for dirty state tracking
+    const changeSubscription = document.onDidChange(() => {
+      this._onDidChangeCustomDocument.fire({
+        document,
+        undo: async () => {},
+        redo: async () => {}
+      });
+    });
+
     // Create editor instance
     const editor = new XtformEditor(document, webviewPanel);
 
     // Dispose when panel closes
-    webviewPanel.onDidDispose(() => editor.dispose());
+    webviewPanel.onDidDispose(() => {
+      changeSubscription.dispose();
+      editor.dispose();
+    });
   }
 
   /**

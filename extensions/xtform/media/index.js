@@ -6663,7 +6663,7 @@ ${end.comment}` : end.comment;
         }
       });
     });
-    document.querySelectorAll("[data-uuid]").forEach((el) => {
+    document.querySelectorAll("input[data-uuid], textarea[data-uuid], select[data-uuid]").forEach((el) => {
       const element = el;
       const uuid = element.getAttribute("data-uuid");
       if (!uuid)
@@ -6680,8 +6680,10 @@ ${end.comment}` : end.comment;
         });
       } else if (element.type === "number") {
         element.addEventListener("input", () => {
-          const value = parseFloat(element.value);
-          sendUpdateValue(uuid, isNaN(value) ? 0 : value);
+          const value = element.valueAsNumber;
+          if (!isNaN(value)) {
+            sendUpdateValue(uuid, value);
+          }
         });
       } else {
         element.addEventListener("input", () => {
@@ -6710,17 +6712,6 @@ ${end.comment}` : end.comment;
       propertyContent.innerHTML = '<p class="no-selection">Component not found</p>';
       return;
     }
-    const isScalarField = [
-      "TextInput",
-      "TextArea",
-      "IntegerInput",
-      "DecimalInput",
-      "Checkbox",
-      "DatePicker",
-      "TimePicker",
-      "Select",
-      "RadioGroup"
-    ].includes(node.type);
     const html = `
     <div class="property-form">
       <div class="property-section">
@@ -6752,18 +6743,6 @@ ${end.comment}` : end.comment;
           id="prop-description"
         >${escapeHtml(node.description || "")}</textarea>
       </div>
-
-      ${isScalarField ? `
-      <div class="property-section">
-        <label class="property-label">Value</label>
-        <input
-          type="text"
-          class="property-input"
-          id="prop-value"
-          value="${escapeHtml(String(node.value || ""))}"
-        />
-      </div>
-      ` : ""}
 
       ${node.type === "Select" || node.type === "RadioGroup" ? `
       <div class="property-section">
@@ -6797,12 +6776,6 @@ ${end.comment}` : end.comment;
     if (descInput) {
       descInput.addEventListener("input", () => {
         sendUpdateProperty(uuid, "description", descInput.value);
-      });
-    }
-    const valueInput = document.getElementById("prop-value");
-    if (valueInput) {
-      valueInput.addEventListener("input", () => {
-        sendUpdateProperty(uuid, "value", valueInput.value);
       });
     }
     const optionsInput = document.getElementById("prop-options");
@@ -6959,8 +6932,42 @@ ${end.comment}` : end.comment;
     switch (message.type) {
       case "update":
         try {
+          const activeElement = document.activeElement;
+          const hasFocus = activeElement && (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || activeElement.tagName === "SELECT");
+          const uuid = hasFocus ? activeElement?.getAttribute("data-uuid") : null;
+          const elementId = hasFocus ? activeElement?.id : null;
+          const radioValue = hasFocus && activeElement instanceof HTMLInputElement && activeElement.type === "radio" ? activeElement.value : null;
+          const selectionStart = hasFocus && "selectionStart" in activeElement ? activeElement.selectionStart : null;
+          const selectionEnd = hasFocus && "selectionEnd" in activeElement ? activeElement.selectionEnd : null;
           currentDoc = parse(message.content);
           renderForm(currentDoc);
+          if (hasFocus) {
+            let restoredElement = null;
+            if (elementId && (elementId.startsWith("prop-") || elementId === "prop-label" || elementId === "prop-description" || elementId === "prop-options")) {
+              restoredElement = document.getElementById(elementId);
+            } else if (uuid) {
+              if (radioValue !== null) {
+                restoredElement = document.querySelector(
+                  `input[type="radio"][data-uuid="${uuid}"][value="${radioValue}"]`
+                );
+              } else {
+                restoredElement = document.querySelector(
+                  `input[data-uuid="${uuid}"], textarea[data-uuid="${uuid}"], select[data-uuid="${uuid}"]`
+                );
+              }
+            }
+            if (restoredElement) {
+              restoredElement.focus();
+              const isNumberInput = restoredElement instanceof HTMLInputElement && restoredElement.type === "number";
+              if (isNumberInput) {
+                const val = restoredElement.value;
+                restoredElement.value = "";
+                restoredElement.value = val;
+              } else if ("setSelectionRange" in restoredElement && selectionStart !== null && selectionEnd !== null) {
+                restoredElement.setSelectionRange(selectionStart, selectionEnd);
+              }
+            }
+          }
         } catch (error) {
           const formPreview = document.getElementById("form-preview");
           if (formPreview) {

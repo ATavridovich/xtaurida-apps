@@ -488,8 +488,8 @@ function setupEventListeners(): void {
     });
   });
 
-  // Value change listeners
-  document.querySelectorAll('[data-uuid]').forEach(el => {
+  // Value change listeners - only attach to actual input/textarea/select elements
+  document.querySelectorAll('input[data-uuid], textarea[data-uuid], select[data-uuid]').forEach(el => {
     const element = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     const uuid = element.getAttribute('data-uuid');
     if (!uuid) return;
@@ -506,8 +506,13 @@ function setupEventListeners(): void {
       });
     } else if (element.type === 'number') {
       element.addEventListener('input', () => {
-        const value = parseFloat(element.value);
-        sendUpdateValue(uuid, isNaN(value) ? 0 : value);
+        // For number inputs, only send valid numbers
+        // This allows users to type intermediate values like "-" or "3." without resetting
+        const value = element.valueAsNumber;
+        if (!isNaN(value)) {
+          sendUpdateValue(uuid, value);
+        }
+        // If NaN (empty or invalid), don't send update - keep previous value
       });
     } else {
       element.addEventListener('input', () => {
@@ -544,11 +549,6 @@ function renderPropertyEditor(uuid: string): void {
     return;
   }
 
-  const isScalarField = [
-    'TextInput', 'TextArea', 'IntegerInput', 'DecimalInput',
-    'Checkbox', 'DatePicker', 'TimePicker', 'Select', 'RadioGroup'
-  ].includes(node.type);
-
   const html = `
     <div class="property-form">
       <div class="property-section">
@@ -580,18 +580,6 @@ function renderPropertyEditor(uuid: string): void {
           id="prop-description"
         >${escapeHtml(node.description || '')}</textarea>
       </div>
-
-      ${isScalarField ? `
-      <div class="property-section">
-        <label class="property-label">Value</label>
-        <input
-          type="text"
-          class="property-input"
-          id="prop-value"
-          value="${escapeHtml(String(node.value || ''))}"
-        />
-      </div>
-      ` : ''}
 
       ${node.type === 'Select' || node.type === 'RadioGroup' ? `
       <div class="property-section">
@@ -630,14 +618,6 @@ function setupPropertyEditorListeners(uuid: string): void {
   if (descInput) {
     descInput.addEventListener('input', () => {
       sendUpdateProperty(uuid, 'description', descInput.value);
-    });
-  }
-
-  // Value
-  const valueInput = document.getElementById('prop-value') as HTMLInputElement;
-  if (valueInput) {
-    valueInput.addEventListener('input', () => {
-      sendUpdateProperty(uuid, 'value', valueInput.value);
     });
   }
 
@@ -844,8 +824,59 @@ window.addEventListener('message', event => {
   switch (message.type) {
     case 'update':
       try {
+        // Save focus state before re-rendering
+        const activeElement = document.activeElement as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+        const hasFocus = activeElement && (
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.tagName === 'SELECT'
+        );
+        const uuid = hasFocus ? activeElement?.getAttribute('data-uuid') : null;
+        const elementId = hasFocus ? activeElement?.id : null;
+        const radioValue = (hasFocus && activeElement instanceof HTMLInputElement && activeElement.type === 'radio') ? activeElement.value : null;
+        const selectionStart = (hasFocus && 'selectionStart' in activeElement!) ? activeElement!.selectionStart : null;
+        const selectionEnd = (hasFocus && 'selectionEnd' in activeElement!) ? activeElement!.selectionEnd : null;
+
         currentDoc = YAML.parse(message.content) as XtformDocument;
         renderForm(currentDoc);
+
+        // Restore focus and cursor position
+        if (hasFocus) {
+          let restoredElement: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null = null;
+
+          // Try to restore Property Editor fields first (by ID)
+          if (elementId && (elementId.startsWith('prop-') || elementId === 'prop-label' || elementId === 'prop-description' || elementId === 'prop-options')) {
+            restoredElement = document.getElementById(elementId) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+          }
+          // Otherwise restore form fields (by data-uuid)
+          else if (uuid) {
+            // For radio buttons, need to find the specific radio with both uuid and value
+            if (radioValue !== null) {
+              restoredElement = document.querySelector(
+                `input[type="radio"][data-uuid="${uuid}"][value="${radioValue}"]`
+              ) as HTMLInputElement | null;
+            } else {
+              // For other inputs, use uuid only
+              restoredElement = document.querySelector(
+                `input[data-uuid="${uuid}"], textarea[data-uuid="${uuid}"], select[data-uuid="${uuid}"]`
+              ) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+            }
+          }
+
+          if (restoredElement) {
+            restoredElement.focus();
+            const isNumberInput = restoredElement instanceof HTMLInputElement && restoredElement.type === 'number';
+
+            if (isNumberInput) {
+              // For number inputs, setSelectionRange doesn't work, so move cursor to end using a trick
+              const val = restoredElement.value;
+              restoredElement.value = '';
+              restoredElement.value = val;
+            } else if ('setSelectionRange' in restoredElement && selectionStart !== null && selectionEnd !== null) {
+              restoredElement.setSelectionRange(selectionStart, selectionEnd);
+            }
+          }
+        }
       } catch (error) {
         const formPreview = document.getElementById('form-preview');
         if (formPreview) {
