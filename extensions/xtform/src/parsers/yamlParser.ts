@@ -51,6 +51,16 @@ export function serializeXtformDocument(doc: XtformDocument): string {
 }
 
 /**
+ * Bumps the document's revision counter — called by every mutator below so
+ * the Viewer can tell whether a form changed since it was last Applied
+ * (`applied_revision`). Applies uniformly to any form, not just ones with
+ * `show_apply_action` set.
+ */
+function bumpRevision(doc: XtformDocument): void {
+  (doc as any).revision = (typeof doc.revision === 'number' ? doc.revision : 0) + 1;
+}
+
+/**
  * Updates a node's value property
  *
  * @param doc - XtformDocument to update
@@ -79,6 +89,7 @@ export function updateNodeValue(doc: XtformDocument, uuid: string, value: any): 
   }
 
   findAndUpdate(newDoc);
+  bumpRevision(newDoc);
   return newDoc;
 }
 
@@ -126,6 +137,7 @@ export function updateNodeProperty(
   }
 
   findAndUpdate(newDoc);
+  bumpRevision(newDoc);
   return newDoc;
 }
 
@@ -150,6 +162,7 @@ export function addNode(
       newDoc.items = [];
     }
     newDoc.items.push(node);
+    bumpRevision(newDoc);
     return newDoc;
   }
 
@@ -174,6 +187,7 @@ export function addNode(
   }
 
   findAndAdd(newDoc);
+  bumpRevision(newDoc);
   return newDoc;
 }
 
@@ -208,6 +222,7 @@ export function deleteNode(doc: XtformDocument, uuid: string): XtformDocument {
   }
 
   findAndDelete(newDoc);
+  bumpRevision(newDoc);
   return newDoc;
 }
 

@@ -28,6 +28,9 @@ interface XtformDocument {
   instructions?: Record<string, string>;
   items?: XtformNode[];
   disable_quick_actions?: boolean;
+  show_apply_action?: boolean;
+  revision?: number;
+  applied_revision?: number | null;
 }
 
 // Component Registry for Designer Palette
@@ -222,6 +225,14 @@ interface QuickAction {
 
 let quickActions: QuickAction[] = [];
 let openQuickMenu: HTMLElement | null = null;
+
+// === APPLY ACTION ===
+// Universal — same command/title for every form type. Declared once by
+// whichever extension owns it (see 'update' message handler); whether a
+// given form actually shows the button is decided purely from the
+// document's own `show_apply_action` flag in renderForm(), not here.
+
+let applyAction: QuickAction | null = null;
 
 function closeQuickMenu(): void {
   if (openQuickMenu) {
@@ -516,10 +527,19 @@ function renderForm(doc: XtformDocument): void {
     const quickMenuButton = (quickActions.length > 0 && !doc.disable_quick_actions)
       ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">⋮</button>`
       : '';
+
+    const applyEligible = applyAction !== null && doc.show_apply_action === true;
+    const applyEnabled = applyEligible &&
+      (doc.applied_revision == null || doc.applied_revision !== doc.revision);
+    const applyButton = applyEligible
+      ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction!.command)}"${applyEnabled ? '' : ' disabled'}>${escapeHtml(applyAction!.title)}</button>`
+      : '';
+
     const formHeader = `
       <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
         <div class="xtform-form-header-row">
           <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')}</h2>
+          ${applyButton}
           ${quickMenuButton}
         </div>
         ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ''}
@@ -550,6 +570,17 @@ function setupEventListeners(): void {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       toggleQuickMenu(btn as HTMLElement);
+    });
+  });
+
+  // Universal Apply button on the form header
+  document.querySelectorAll('.xtform-apply-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const command = (btn as HTMLElement).getAttribute('data-command');
+      if (command) {
+        sendRunCommand(command);
+      }
     });
   });
 
@@ -934,6 +965,7 @@ window.addEventListener('message', event => {
         const selectionEnd = (hasFocus && 'selectionEnd' in activeElement!) ? activeElement!.selectionEnd : null;
 
         quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
+        applyAction = message.applyAction ?? null;
         currentDoc = YAML.parse(message.content) as XtformDocument;
         renderForm(currentDoc);
 

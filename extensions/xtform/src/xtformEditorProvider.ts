@@ -32,6 +32,22 @@ function getFormQuickActions(): FormQuickAction[] {
 }
 
 /**
+ * Reads the single universal "Apply" action declared by the xTaurida Agent
+ * extension's manifest (`xtaurida.formApplyAction` in its package.json —
+ * a singular object, unlike `formQuickActions`, since there is only ever
+ * one Apply action for the whole extension). Whether a given form actually
+ * shows it is decided by the Viewer from the document's own
+ * `show_apply_action` flag, not here.
+ */
+function getFormApplyAction(): FormQuickAction | undefined {
+  const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
+  const action = agentExt?.packageJSON?.xtaurida?.formApplyAction;
+  return action && typeof action.command === 'string' && typeof action.title === 'string'
+    ? action
+    : undefined;
+}
+
+/**
  * Custom document for .xtform files with dirty state tracking
  */
 class XtformDocument implements vscode.CustomDocument {
@@ -543,7 +559,8 @@ class XtformEditor extends Disposable {
     this.panel.webview.postMessage({
       type: 'update',
       content: this.document.content,
-      quickActions: getFormQuickActions()
+      quickActions: getFormQuickActions(),
+      applyAction: getFormApplyAction() ?? null
     });
   }
 }

@@ -6425,6 +6425,7 @@ ${end.comment}` : end.comment;
   var vscode = acquireVsCodeApi();
   var quickActions = [];
   var openQuickMenu = null;
+  var applyAction = null;
   function closeQuickMenu() {
     if (openQuickMenu) {
       openQuickMenu.remove();
@@ -6676,10 +6677,14 @@ ${end.comment}` : end.comment;
       return;
     try {
       const quickMenuButton = quickActions.length > 0 && !doc.disable_quick_actions ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">\u22EE</button>` : "";
+      const applyEligible = applyAction !== null && doc.show_apply_action === true;
+      const applyEnabled = applyEligible && (doc.applied_revision == null || doc.applied_revision !== doc.revision);
+      const applyButton = applyEligible ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction.command)}"${applyEnabled ? "" : " disabled"}>${escapeHtml(applyAction.title)}</button>` : "";
       const formHeader = `
       <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
         <div class="xtform-form-header-row">
           <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")}</h2>
+          ${applyButton}
           ${quickMenuButton}
         </div>
         ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ""}
@@ -6702,6 +6707,15 @@ ${end.comment}` : end.comment;
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         toggleQuickMenu(btn);
+      });
+    });
+    document.querySelectorAll(".xtform-apply-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const command = btn.getAttribute("data-command");
+        if (command) {
+          sendRunCommand(command);
+        }
       });
     });
     document.querySelectorAll(".xtform-component").forEach((el) => {
@@ -7008,6 +7022,7 @@ ${end.comment}` : end.comment;
           const selectionStart = hasFocus && "selectionStart" in activeElement ? activeElement.selectionStart : null;
           const selectionEnd = hasFocus && "selectionEnd" in activeElement ? activeElement.selectionEnd : null;
           quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
+          applyAction = message.applyAction ?? null;
           currentDoc = parse(message.content);
           renderForm(currentDoc);
           if (hasFocus) {

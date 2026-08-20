@@ -133,6 +133,29 @@ body {
   color: var(--vscode-editor-foreground);
 }
 
+/* Universal Apply action */
+.xtform-apply-btn {
+  flex-shrink: 0;
+  padding: 4px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.xtform-apply-btn:hover:not(:disabled) {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.xtform-apply-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Quick actions (Clarify | Elaborate | Summarize) */
 .xtform-quick-menu-btn {
   position: relative;

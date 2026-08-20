@@ -67,6 +67,15 @@ export interface XtformDocument {
   /** When true, the Viewer hides the form-header quick-actions menu for this form */
   disable_quick_actions?: boolean;
 
+  /** When true, the Viewer shows the universal Apply button for this form */
+  show_apply_action?: boolean;
+
+  /** Bumped by the Viewer on every edit — see `applied_revision` */
+  revision?: number;
+
+  /** Snapshot of `revision` at the last successful Apply; null = never applied */
+  applied_revision?: number | null;
+
   /** AI behaviour instructions - see Instructions section */
   instructions?: Record<string, string>;
 
