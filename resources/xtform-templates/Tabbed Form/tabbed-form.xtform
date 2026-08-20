@@ -1,0 +1,15 @@
+type: Form
+uuid: "template-tabbed-form"
+title: "New Form"
+items:
+  - type: Tab
+    uuid: "template-tabbed-form-s-001"
+    label: "General"
+    items:
+      - type: TextInput
+        uuid: "template-tabbed-form-f-001"
+        label: "Name"
+  - type: Tab
+    uuid: "template-tabbed-form-s-002"
+    label: "Advanced"
+    items: []

@@ -14,16 +14,20 @@ import { FileFilter, IFileDialogService } from '../../../../platform/dialogs/com
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
-import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
+import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 
-const category: ILocalizedString = localize2('Create', 'Create');
+export const category: ILocalizedString = localize2('Create', 'Create');
 
 const XTFORM_VIEW_TYPE = 'xtform.editor';
-const XTFORM_FILE_FILTER: FileFilter[] = [{ name: localize('xtformFile', "XTForm"), extensions: ['xtform'] }];
+export const XTFORM_FILE_FILTER: FileFilter[] = [{ name: localize('xtformFile', "XTForm"), extensions: ['xtform'] }];
 const defaultFormTitle = localize('newForm.defaultTitle', "New Form");
 
-const NewFormMenu = new MenuId('NewForm');
+// "From Template" (electron-browser/xtformTemplates.contribution.ts) needs
+// the app's install root to find the bundled templates folder, which isn't
+// available in the web/common environment service — so it lives in a
+// separate, desktop-only contribution and reuses the pieces exported here.
+export const NewFormMenu = new MenuId('NewForm');
 
 // File > New Form submenu — kept at the top of the File > New section
 MenuRegistry.appendMenuItem(MenuId.MenubarFileMenu, {
@@ -33,11 +37,11 @@ MenuRegistry.appendMenuItem(MenuId.MenubarFileMenu, {
 	order: 0
 });
 
-function yamlString(value: string): string {
+export function yamlString(value: string): string {
 	return JSON.stringify(value);
 }
 
-function newUuid(): string {
+export function newUuid(): string {
 	return yamlString(generateUuid());
 }
 
@@ -48,78 +52,6 @@ title: ${yamlString(title)}
 items: []
 `;
 }
-
-interface FormTemplate {
-	readonly id: string;
-	readonly label: string;
-	readonly description: string;
-	content(title: string): string;
-}
-
-const formTemplates: FormTemplate[] = [
-	{
-		id: 'section',
-		label: localize('template.section', "Basic Form"),
-		description: localize('template.section.description', "A section with a couple of fields"),
-		content: title => `type: Form
-uuid: ${newUuid()}
-title: ${yamlString(title)}
-items:
-  - type: Section
-    uuid: ${newUuid()}
-    label: "Details"
-    items:
-      - type: TextInput
-        uuid: ${newUuid()}
-        label: "Name"
-      - type: TextArea
-        uuid: ${newUuid()}
-        label: "Description"
-`
-	},
-	{
-		id: 'tabs',
-		label: localize('template.tabs', "Tabbed Form"),
-		description: localize('template.tabs.description', "Two tabs, ready for more fields"),
-		content: title => `type: Form
-uuid: ${newUuid()}
-title: ${yamlString(title)}
-items:
-  - type: Tab
-    uuid: ${newUuid()}
-    label: "General"
-    items:
-      - type: TextInput
-        uuid: ${newUuid()}
-        label: "Name"
-  - type: Tab
-    uuid: ${newUuid()}
-    label: "Advanced"
-    items: []
-`
-	},
-	{
-		id: 'table',
-		label: localize('template.table', "Table Form"),
-		description: localize('template.table.description', "A single editable table"),
-		content: title => `type: Form
-uuid: ${newUuid()}
-title: ${yamlString(title)}
-items:
-  - type: Table
-    uuid: ${newUuid()}
-    label: "Items"
-    items:
-      - type: TextInput
-        uuid: ${newUuid()}
-        label: "Name"
-      - type: TextInput
-        uuid: ${newUuid()}
-        label: "Value"
-    data: []
-`
-	}
-];
 
 interface MarkdownSection {
 	label: string;
@@ -206,7 +138,7 @@ items: []
 `;
 }
 
-async function defaultFormUri(dialogService: IFileDialogService, fileName: string): Promise<URI> {
+export async function defaultFormUri(dialogService: IFileDialogService, fileName: string): Promise<URI> {
 	return joinPath(await dialogService.defaultFilePath(), fileName);
 }
 
@@ -217,7 +149,7 @@ async function defaultFormUri(dialogService: IFileDialogService, fileName: strin
  * disk immediately — the XTForm custom editor provider has no untitled/
  * in-memory document support.
  */
-async function saveAndOpenForm(dialogService: IFileDialogService, fileService: IFileService, editorService: IEditorService, content: string, defaultUri: URI): Promise<boolean> {
+export async function saveAndOpenForm(dialogService: IFileDialogService, fileService: IFileService, editorService: IEditorService, content: string, defaultUri: URI): Promise<boolean> {
 	const createFormLabel = localize('newForm.saveLabel', "Create Form");
 	const saveUri = await dialogService.showSaveDialog({
 		title: createFormLabel,
@@ -265,48 +197,6 @@ registerAction2(class extends Action2 {
 
 		const defaultUri = await defaultFormUri(dialogService, 'NewForm.xtform');
 		await saveAndOpenForm(dialogService, fileService, editorService, createBlankFormYaml(defaultFormTitle), defaultUri);
-	}
-});
-
-registerAction2(class extends Action2 {
-	constructor() {
-		super({
-			id: 'workbench.action.files.newForm.fromTemplate',
-			title: localize2('newForm.fromTemplate', "From Template"),
-			category,
-			f1: true,
-			menu: {
-				id: NewFormMenu,
-				group: '1_form',
-				order: 2
-			}
-		});
-	}
-
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const quickInputService = accessor.get(IQuickInputService);
-		const dialogService = accessor.get(IFileDialogService);
-		const fileService = accessor.get(IFileService);
-		const editorService = accessor.get(IEditorService);
-
-		const picks: (IQuickPickItem & { template: FormTemplate })[] = formTemplates.map(template => ({
-			id: template.id,
-			label: template.label,
-			description: template.description,
-			template
-		}));
-
-		const pick = await quickInputService.pick(picks, {
-			title: localize('newForm.fromTemplate.title', "New Form from Template"),
-			placeHolder: localize('newForm.fromTemplate.placeholder', "Select a form template")
-		});
-
-		if (!pick) {
-			return;
-		}
-
-		const defaultUri = await defaultFormUri(dialogService, 'NewForm.xtform');
-		await saveAndOpenForm(dialogService, fileService, editorService, pick.template.content(defaultFormTitle), defaultUri);
 	}
 });
 

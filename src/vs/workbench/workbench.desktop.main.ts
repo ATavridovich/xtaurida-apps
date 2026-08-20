@@ -142,6 +142,9 @@ import './contrib/processExplorer/electron-browser/processExplorer.contribution.
 // Remote
 import './contrib/remote/electron-browser/remote.contribution.js';
 
+// XTForm
+import './contrib/xtform/electron-browser/xtformTemplates.contribution.js';
+
 // Terminal
 import './contrib/terminal/electron-browser/terminal.contribution.js';
 

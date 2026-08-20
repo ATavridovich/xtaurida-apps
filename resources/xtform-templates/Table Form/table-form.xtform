@@ -1,0 +1,15 @@
+type: Form
+uuid: "template-table-form"
+title: "New Form"
+items:
+  - type: Table
+    uuid: "template-table-form-t-001"
+    label: "Items"
+    items:
+      - type: TextInput
+        uuid: "template-table-form-c-001"
+        label: "Name"
+      - type: TextInput
+        uuid: "template-table-form-c-002"
+        label: "Value"
+    data: []

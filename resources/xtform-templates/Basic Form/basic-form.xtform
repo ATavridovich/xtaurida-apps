@@ -1,0 +1,14 @@
+type: Form
+uuid: "template-basic-form"
+title: "New Form"
+items:
+  - type: Section
+    uuid: "template-basic-form-s-001"
+    label: "Details"
+    items:
+      - type: TextInput
+        uuid: "template-basic-form-f-001"
+        label: "Name"
+      - type: TextArea
+        uuid: "template-basic-form-f-002"
+        label: "Description"
