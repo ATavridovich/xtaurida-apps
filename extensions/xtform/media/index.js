@@ -6423,6 +6423,40 @@ ${end.comment}` : end.comment;
   var currentDoc = null;
   var selectedUuid = null;
   var vscode = acquireVsCodeApi();
+  var quickActions = [];
+  var openQuickMenu = null;
+  function closeQuickMenu() {
+    if (openQuickMenu) {
+      openQuickMenu.remove();
+      openQuickMenu = null;
+    }
+  }
+  function toggleQuickMenu(anchor) {
+    if (openQuickMenu) {
+      closeQuickMenu();
+      return;
+    }
+    const menu = document.createElement("div");
+    menu.className = "xtform-quick-menu";
+    menu.innerHTML = quickActions.map(
+      (action) => `<button class="xtform-quick-menu-item" data-command="${escapeHtml(action.command)}">${escapeHtml(action.title)}</button>`
+    ).join("");
+    menu.querySelectorAll(".xtform-quick-menu-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const command = item.getAttribute("data-command");
+        if (command) {
+          sendRunCommand(command);
+        }
+        closeQuickMenu();
+      });
+    });
+    anchor.appendChild(menu);
+    openQuickMenu = menu;
+  }
+  function sendRunCommand(command) {
+    vscode.postMessage({ type: "runCommand", command });
+  }
   function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
@@ -6641,9 +6675,13 @@ ${end.comment}` : end.comment;
     if (!formPreview)
       return;
     try {
+      const quickMenuButton = quickActions.length > 0 && !doc.disable_quick_actions ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">\u22EE</button>` : "";
       const formHeader = `
       <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
-        <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")}</h2>
+        <div class="xtform-form-header-row">
+          <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")}</h2>
+          ${quickMenuButton}
+        </div>
         ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ""}
       </div>
     `;
@@ -6660,6 +6698,12 @@ ${end.comment}` : end.comment;
     }
   }
   function setupEventListeners() {
+    document.querySelectorAll(".xtform-quick-menu-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleQuickMenu(btn);
+      });
+    });
     document.querySelectorAll(".xtform-component").forEach((el) => {
       el.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -6963,6 +7007,7 @@ ${end.comment}` : end.comment;
           const radioValue = hasFocus && activeElement instanceof HTMLInputElement && activeElement.type === "radio" ? activeElement.value : null;
           const selectionStart = hasFocus && "selectionStart" in activeElement ? activeElement.selectionStart : null;
           const selectionEnd = hasFocus && "selectionEnd" in activeElement ? activeElement.selectionEnd : null;
+          quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
           currentDoc = parse(message.content);
           renderForm(currentDoc);
           if (hasFocus) {
@@ -7019,6 +7064,7 @@ ${end.comment}` : end.comment;
     });
     renderComponentPalette("inputs");
     setupPropertyEditorCollapse();
+    document.addEventListener("click", () => closeQuickMenu());
     vscode.postMessage({ type: "ready" });
   });
 })();

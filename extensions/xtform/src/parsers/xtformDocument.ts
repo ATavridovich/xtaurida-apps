@@ -64,6 +64,9 @@ export interface XtformDocument {
   /** Suggested next elaboration steps */
   elaborate_options?: string[];
 
+  /** When true, the Viewer hides the form-header quick-actions menu for this form */
+  disable_quick_actions?: boolean;
+
   /** AI behaviour instructions - see Instructions section */
   instructions?: Record<string, string>;
 

@@ -27,6 +27,7 @@ interface XtformDocument {
   elaborate_options?: string[];
   instructions?: Record<string, string>;
   items?: XtformNode[];
+  disable_quick_actions?: boolean;
 }
 
 // Component Registry for Designer Palette
@@ -206,6 +207,59 @@ const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
 let currentDoc: XtformDocument | null = null;
 let selectedUuid: string | null = null;
 const vscode = acquireVsCodeApi();
+
+// === QUICK ACTIONS MENU ===
+// Populated from the extension host (see the 'update' message handler),
+// which reads it from whichever extension(s) declare form quick-actions in
+// their own manifest. No command list is hardcoded here — if nothing is
+// declared (e.g. xTaurida Agent isn't installed), the menu button doesn't
+// render at all.
+
+interface QuickAction {
+  command: string;
+  title: string;
+}
+
+let quickActions: QuickAction[] = [];
+let openQuickMenu: HTMLElement | null = null;
+
+function closeQuickMenu(): void {
+  if (openQuickMenu) {
+    openQuickMenu.remove();
+    openQuickMenu = null;
+  }
+}
+
+function toggleQuickMenu(anchor: HTMLElement): void {
+  if (openQuickMenu) {
+    closeQuickMenu();
+    return;
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'xtform-quick-menu';
+  menu.innerHTML = quickActions.map(action =>
+    `<button class="xtform-quick-menu-item" data-command="${escapeHtml(action.command)}">${escapeHtml(action.title)}</button>`
+  ).join('');
+
+  menu.querySelectorAll('.xtform-quick-menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const command = (item as HTMLElement).getAttribute('data-command');
+      if (command) {
+        sendRunCommand(command);
+      }
+      closeQuickMenu();
+    });
+  });
+
+  anchor.appendChild(menu);
+  openQuickMenu = menu;
+}
+
+function sendRunCommand(command: string): void {
+  vscode.postMessage({ type: 'runCommand', command });
+}
 
 // === RENDERING FUNCTIONS ===
 
@@ -459,9 +513,15 @@ function renderForm(doc: XtformDocument): void {
 
   try {
     // Render form header (clickable to edit form properties)
+    const quickMenuButton = (quickActions.length > 0 && !doc.disable_quick_actions)
+      ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">⋮</button>`
+      : '';
     const formHeader = `
       <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
-        <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')}</h2>
+        <div class="xtform-form-header-row">
+          <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')}</h2>
+          ${quickMenuButton}
+        </div>
         ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ''}
       </div>
     `;
@@ -485,6 +545,14 @@ function renderForm(doc: XtformDocument): void {
 // === EVENT LISTENERS ===
 
 function setupEventListeners(): void {
+  // Quick actions menu (Clarify | Elaborate | Summarize) on the form header
+  document.querySelectorAll('.xtform-quick-menu-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleQuickMenu(btn as HTMLElement);
+    });
+  });
+
   // Component selection
   document.querySelectorAll('.xtform-component').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -865,6 +933,7 @@ window.addEventListener('message', event => {
         const selectionStart = (hasFocus && 'selectionStart' in activeElement!) ? activeElement!.selectionStart : null;
         const selectionEnd = (hasFocus && 'selectionEnd' in activeElement!) ? activeElement!.selectionEnd : null;
 
+        quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
         currentDoc = YAML.parse(message.content) as XtformDocument;
         renderForm(currentDoc);
 
@@ -942,6 +1011,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Setup property editor collapse
   setupPropertyEditorCollapse();
+
+  // Close the quick actions menu when clicking anywhere outside it
+  document.addEventListener('click', () => closeQuickMenu());
 
   // Signal ready to extension
   vscode.postMessage({ type: 'ready' });

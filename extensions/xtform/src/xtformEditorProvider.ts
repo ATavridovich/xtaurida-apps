@@ -12,6 +12,25 @@ import { XtformDocument as XtformDocumentType, XtformNode, XtformParseError } fr
 import { getNonce } from './util/uuid';
 import { Disposable } from './util/dispose';
 
+interface FormQuickAction {
+  command: string;
+  title: string;
+}
+
+/**
+ * Reads the form quick-menu actions declared by the xTaurida Agent
+ * extension's own manifest (`xtaurida.formQuickActions` in its
+ * package.json). This works even if that extension hasn't been activated
+ * yet, and returns an empty list if it isn't installed — the caller is
+ * expected to hide the quick-menu entirely in that case, rather than
+ * hardcode a guessed command list here.
+ */
+function getFormQuickActions(): FormQuickAction[] {
+  const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
+  const actions = agentExt?.packageJSON?.xtaurida?.formQuickActions;
+  return Array.isArray(actions) ? actions : [];
+}
+
 /**
  * Custom document for .xtform files with dirty state tracking
  */
@@ -367,10 +386,32 @@ class XtformEditor extends Disposable {
         await this.editQueue;
         break;
 
+      case 'runCommand':
+        // Quick action from the form header menu (Clarify | Elaborate | Summarize)
+        await this.handleRunCommand(message.command);
+        break;
+
       case 'error':
         // Show error from webview
         vscode.window.showErrorMessage(`XTForm Error: ${message.message}`);
         break;
+    }
+  }
+
+  /**
+   * Runs an SDD command (from the form header quick-menu) against this
+   * document. `command` is the full command id as declared by whichever
+   * extension contributed it (see `getFormQuickActions`) — resolves the
+   * target file from the active editor tab, which is this custom editor's
+   * panel.
+   */
+  private async handleRunCommand(command: string): Promise<void> {
+    try {
+      await vscode.commands.executeCommand(command);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to run "${command}": ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -501,7 +542,8 @@ class XtformEditor extends Disposable {
   private updateWebview(): void {
     this.panel.webview.postMessage({
       type: 'update',
-      content: this.document.content
+      content: this.document.content,
+      quickActions: getFormQuickActions()
     });
   }
 }

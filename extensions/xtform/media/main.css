@@ -119,11 +119,71 @@ body {
   border-bottom-color: var(--vscode-focusBorder);
 }
 
+.xtform-form-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .xtform-form-title {
   margin: 0 0 8px 0;
   font-size: 1.8em;
   font-weight: 600;
   color: var(--vscode-editor-foreground);
+}
+
+/* Quick actions (Clarify | Elaborate | Summarize) */
+.xtform-quick-menu-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--vscode-icon-foreground);
+  font-size: 1.2em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xtform-quick-menu-btn:hover {
+  background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.xtform-quick-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  margin-top: 4px;
+  padding: 4px;
+  background-color: var(--vscode-menu-background);
+  color: var(--vscode-menu-foreground);
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.xtform-quick-menu-item {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  text-align: left;
+  cursor: pointer;
+}
+
+.xtform-quick-menu-item:hover {
+  background-color: var(--vscode-menu-selectionBackground);
+  color: var(--vscode-menu-selectionForeground);
 }
 
 .xtform-form-description {
