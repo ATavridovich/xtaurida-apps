@@ -1,0 +1,40 @@
+type: Form
+uuid: "us-form-010"
+title: "User Story / Epic"
+description: "A short description of a feature from the end user's perspective, with acceptance criteria."
+elaborate_options:
+  - "Use Case Specification"
+  - "Acceptance Criteria & Test Scenarios"
+  - "Requirements Prioritization Matrix (MoSCoW)"
+items:
+  - type: Section
+    uuid: "us-004"
+    label: "Story"
+    items:
+      - type: TextInput
+        uuid: "us-001"
+        label: "As a..."
+      - type: TextInput
+        uuid: "us-002"
+        label: "I want..."
+      - type: TextInput
+        uuid: "us-003"
+        label: "So that..."
+  - type: Section
+    uuid: "us-009"
+    label: "Acceptance Criteria"
+    items:
+      - type: Table
+        uuid: "us-008"
+        label: "Acceptance Criteria"
+        items:
+          - type: TextInput
+            uuid: "us-005"
+            label: "Given"
+          - type: TextInput
+            uuid: "us-006"
+            label: "When"
+          - type: TextInput
+            uuid: "us-007"
+            label: "Then"
+        data: []

@@ -1,0 +1,26 @@
+type: Form
+uuid: "cm-form-006"
+title: "Competitive & Market Analysis"
+description: "Comparison of competitors and market positioning relevant to the initiative."
+elaborate_options:
+  - "SWOT Analysis"
+  - "Business Case"
+  - "Vendor / Solution Evaluation Matrix"
+items:
+  - type: Table
+    uuid: "cm-005"
+    label: "Competitors"
+    items:
+      - type: TextInput
+        uuid: "cm-001"
+        label: "Competitor"
+      - type: TextArea
+        uuid: "cm-002"
+        label: "Strengths"
+      - type: TextArea
+        uuid: "cm-003"
+        label: "Weaknesses"
+      - type: TextArea
+        uuid: "cm-004"
+        label: "Positioning"
+    data: []

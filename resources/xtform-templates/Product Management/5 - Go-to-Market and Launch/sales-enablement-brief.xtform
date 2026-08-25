@@ -1,0 +1,38 @@
+type: Form
+uuid: "se-form-009"
+title: "Sales Enablement Brief"
+description: "Equips sales with the value proposition, key messages, and objection handling for a product or feature."
+elaborate_options:
+  - "Product Positioning Statement"
+  - "Competitive Analysis / Battlecard"
+  - "Pricing & Packaging Strategy"
+items:
+  - type: Section
+    uuid: "se-002"
+    label: "Value Proposition"
+    items:
+      - type: TextArea
+        uuid: "se-001"
+        label: "Value Proposition"
+  - type: Section
+    uuid: "se-004"
+    label: "Key Messages"
+    items:
+      - type: TextArea
+        uuid: "se-003"
+        label: "Key Messages"
+  - type: Section
+    uuid: "se-008"
+    label: "Objection Handling"
+    items:
+      - type: Table
+        uuid: "se-007"
+        label: "Objection Handling"
+        items:
+          - type: TextInput
+            uuid: "se-005"
+            label: "Objection"
+          - type: TextArea
+            uuid: "se-006"
+            label: "Response"
+        data: []

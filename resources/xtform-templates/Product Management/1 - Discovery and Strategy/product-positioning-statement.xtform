@@ -1,0 +1,31 @@
+type: Form
+uuid: "ps-form-008"
+title: "Product Positioning Statement"
+description: "Defines how the product is positioned in the market relative to alternatives."
+elaborate_options:
+  - "Value Proposition Canvas"
+  - "Competitive Analysis / Battlecard"
+  - "Sales Enablement Brief"
+items:
+  - type: Section
+    uuid: "ps-007"
+    label: "Positioning"
+    items:
+      - type: TextInput
+        uuid: "ps-001"
+        label: "For [target customer]"
+      - type: TextInput
+        uuid: "ps-002"
+        label: "Who [need / opportunity]"
+      - type: TextInput
+        uuid: "ps-003"
+        label: "The [product name] is a [category]"
+      - type: TextInput
+        uuid: "ps-004"
+        label: "That [key benefit]"
+      - type: TextInput
+        uuid: "ps-005"
+        label: "Unlike [primary competitive alternative]"
+      - type: TextInput
+        uuid: "ps-006"
+        label: "Our product [key differentiator]"

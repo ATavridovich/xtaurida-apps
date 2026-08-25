@@ -1,0 +1,53 @@
+type: Form
+uuid: "fs-form-013"
+title: "Feasibility Study"
+description: "Assessment of whether a proposed solution is viable across technical, operational, financial, and schedule dimensions."
+elaborate_options:
+  - "Business Case"
+  - "Risk Register"
+  - "Vendor / Solution Evaluation Matrix"
+items:
+  - type: Tab
+    uuid: "fs-003"
+    label: "Technical"
+    items:
+      - type: TextArea
+        uuid: "fs-001"
+        label: "Assessment"
+      - type: Select
+        uuid: "fs-002"
+        label: "Verdict"
+        options: "Feasible,Feasible with Changes,Not Feasible"
+  - type: Tab
+    uuid: "fs-006"
+    label: "Operational"
+    items:
+      - type: TextArea
+        uuid: "fs-004"
+        label: "Assessment"
+      - type: Select
+        uuid: "fs-005"
+        label: "Verdict"
+        options: "Feasible,Feasible with Changes,Not Feasible"
+  - type: Tab
+    uuid: "fs-009"
+    label: "Financial"
+    items:
+      - type: TextArea
+        uuid: "fs-007"
+        label: "Assessment"
+      - type: Select
+        uuid: "fs-008"
+        label: "Verdict"
+        options: "Feasible,Feasible with Changes,Not Feasible"
+  - type: Tab
+    uuid: "fs-012"
+    label: "Schedule"
+    items:
+      - type: TextArea
+        uuid: "fs-010"
+        label: "Assessment"
+      - type: Select
+        uuid: "fs-011"
+        label: "Verdict"
+        options: "Feasible,Feasible with Changes,Not Feasible"

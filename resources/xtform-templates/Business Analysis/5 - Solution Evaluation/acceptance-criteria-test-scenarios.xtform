@@ -1,0 +1,30 @@
+type: Form
+uuid: "ac-form-007"
+title: "Acceptance Criteria & Test Scenarios"
+description: "Defines the conditions a solution must satisfy to be accepted, expressed as testable scenarios."
+elaborate_options:
+  - "Use Case Specification"
+  - "Requirements Traceability Matrix (RTM)"
+  - "Non-Functional Requirements Specification (NFR)"
+items:
+  - type: Table
+    uuid: "ac-006"
+    label: "Scenarios"
+    items:
+      - type: TextInput
+        uuid: "ac-001"
+        label: "Scenario"
+      - type: TextArea
+        uuid: "ac-002"
+        label: "Given"
+      - type: TextArea
+        uuid: "ac-003"
+        label: "When"
+      - type: TextArea
+        uuid: "ac-004"
+        label: "Then"
+      - type: Select
+        uuid: "ac-005"
+        label: "Status"
+        options: "Not Tested,Passed,Failed"
+    data: []

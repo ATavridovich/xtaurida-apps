@@ -1,0 +1,72 @@
+type: Form
+uuid: "bm-form-019"
+title: "Business Model Canvas"
+description: "Nine-block overview of how the product creates, delivers, and captures value."
+elaborate_options:
+  - "Product Vision Statement"
+  - "Pricing & Packaging Strategy"
+  - "Go-to-Market Plan"
+items:
+  - type: Section
+    uuid: "bm-002"
+    label: "Key Partners"
+    items:
+      - type: TextArea
+        uuid: "bm-001"
+        label: "Key Partners"
+  - type: Section
+    uuid: "bm-004"
+    label: "Key Activities"
+    items:
+      - type: TextArea
+        uuid: "bm-003"
+        label: "Key Activities"
+  - type: Section
+    uuid: "bm-006"
+    label: "Key Resources"
+    items:
+      - type: TextArea
+        uuid: "bm-005"
+        label: "Key Resources"
+  - type: Section
+    uuid: "bm-008"
+    label: "Value Propositions"
+    items:
+      - type: TextArea
+        uuid: "bm-007"
+        label: "Value Propositions"
+  - type: Section
+    uuid: "bm-010"
+    label: "Customer Relationships"
+    items:
+      - type: TextArea
+        uuid: "bm-009"
+        label: "Customer Relationships"
+  - type: Section
+    uuid: "bm-012"
+    label: "Channels"
+    items:
+      - type: TextArea
+        uuid: "bm-011"
+        label: "Channels"
+  - type: Section
+    uuid: "bm-014"
+    label: "Customer Segments"
+    items:
+      - type: TextArea
+        uuid: "bm-013"
+        label: "Customer Segments"
+  - type: Section
+    uuid: "bm-016"
+    label: "Cost Structure"
+    items:
+      - type: TextArea
+        uuid: "bm-015"
+        label: "Cost Structure"
+  - type: Section
+    uuid: "bm-018"
+    label: "Revenue Streams"
+    items:
+      - type: TextArea
+        uuid: "bm-017"
+        label: "Revenue Streams"

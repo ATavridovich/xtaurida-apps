@@ -1,0 +1,46 @@
+type: Form
+uuid: "pc-form-012"
+title: "Project / Initiative Charter"
+description: "High-level definition of a project's objectives, sponsor, scope, and success criteria."
+elaborate_options:
+  - "Business Requirements Document"
+  - "Stakeholder Analysis / RACI Matrix"
+  - "Scope Statement"
+items:
+  - type: Section
+    uuid: "pc-004"
+    label: "Overview"
+    items:
+      - type: TextInput
+        uuid: "pc-001"
+        label: "Project Name"
+      - type: TextInput
+        uuid: "pc-002"
+        label: "Sponsor"
+      - type: TextArea
+        uuid: "pc-003"
+        label: "Objectives"
+  - type: Section
+    uuid: "pc-007"
+    label: "Scope"
+    items:
+      - type: TextArea
+        uuid: "pc-005"
+        label: "In Scope"
+      - type: TextArea
+        uuid: "pc-006"
+        label: "Out of Scope"
+  - type: Section
+    uuid: "pc-009"
+    label: "Success Criteria"
+    items:
+      - type: TextArea
+        uuid: "pc-008"
+        label: "Success Criteria"
+  - type: Section
+    uuid: "pc-011"
+    label: "Timeline"
+    items:
+      - type: TextArea
+        uuid: "pc-010"
+        label: "High-Level Timeline"

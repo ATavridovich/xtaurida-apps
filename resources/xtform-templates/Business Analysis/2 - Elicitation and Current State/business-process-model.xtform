@@ -1,0 +1,57 @@
+type: Form
+uuid: "pm-form-015"
+title: "Business Process Model (As-Is / To-Be)"
+description: "Step-by-step model of a business process in its current and proposed future states."
+elaborate_options:
+  - "Gap Analysis"
+  - "Business Rules Catalog"
+  - "Functional Requirements Specification"
+items:
+  - type: Tab
+    uuid: "pm-007"
+    label: "As-Is"
+    items:
+      - type: Table
+        uuid: "pm-006"
+        label: "As-Is Steps"
+        items:
+          - type: TextInput
+            uuid: "pm-001"
+            label: "Step"
+          - type: TextInput
+            uuid: "pm-002"
+            label: "Actor"
+          - type: TextInput
+            uuid: "pm-003"
+            label: "Input"
+          - type: TextInput
+            uuid: "pm-004"
+            label: "Output"
+          - type: TextInput
+            uuid: "pm-005"
+            label: "System"
+        data: []
+  - type: Tab
+    uuid: "pm-014"
+    label: "To-Be"
+    items:
+      - type: Table
+        uuid: "pm-013"
+        label: "To-Be Steps"
+        items:
+          - type: TextInput
+            uuid: "pm-008"
+            label: "Step"
+          - type: TextInput
+            uuid: "pm-009"
+            label: "Actor"
+          - type: TextInput
+            uuid: "pm-010"
+            label: "Input"
+          - type: TextInput
+            uuid: "pm-011"
+            label: "Output"
+          - type: TextInput
+            uuid: "pm-012"
+            label: "System"
+        data: []

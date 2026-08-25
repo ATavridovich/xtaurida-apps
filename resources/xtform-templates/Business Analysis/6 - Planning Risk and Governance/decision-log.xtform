@@ -1,0 +1,29 @@
+type: Form
+uuid: "dl-form-007"
+title: "Decision Log"
+description: "Records key decisions made during the initiative, along with the rationale and decision maker."
+elaborate_options:
+  - "Change Request Log"
+  - "Risk Register"
+  - "KPI & Success Metrics / Status Report"
+items:
+  - type: Table
+    uuid: "dl-006"
+    label: "Decisions"
+    items:
+      - type: TextInput
+        uuid: "dl-001"
+        label: "Decision ID"
+      - type: TextArea
+        uuid: "dl-002"
+        label: "Description"
+      - type: DatePicker
+        uuid: "dl-003"
+        label: "Date"
+      - type: TextInput
+        uuid: "dl-004"
+        label: "Decision Maker"
+      - type: TextArea
+        uuid: "dl-005"
+        label: "Rationale"
+    data: []

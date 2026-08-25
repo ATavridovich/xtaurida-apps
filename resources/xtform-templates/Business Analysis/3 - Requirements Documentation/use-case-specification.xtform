@@ -1,0 +1,50 @@
+type: Form
+uuid: "uc-form-013"
+title: "Use Case Specification"
+description: "Description of how an actor interacts with a system to achieve a goal, including main and alternate flows."
+elaborate_options:
+  - "Functional Requirements Specification"
+  - "Acceptance Criteria & Test Scenarios"
+  - "User Story / Epic"
+items:
+  - type: Section
+    uuid: "uc-004"
+    label: "Overview"
+    items:
+      - type: TextInput
+        uuid: "uc-001"
+        label: "Use Case Name"
+      - type: TextInput
+        uuid: "uc-002"
+        label: "Actor"
+      - type: TextArea
+        uuid: "uc-003"
+        label: "Goal"
+  - type: Section
+    uuid: "uc-006"
+    label: "Preconditions"
+    items:
+      - type: TextArea
+        uuid: "uc-005"
+        label: "Preconditions"
+  - type: Section
+    uuid: "uc-008"
+    label: "Main Flow"
+    items:
+      - type: TextArea
+        uuid: "uc-007"
+        label: "Main Flow"
+  - type: Section
+    uuid: "uc-010"
+    label: "Alternate Flows"
+    items:
+      - type: TextArea
+        uuid: "uc-009"
+        label: "Alternate Flows"
+  - type: Section
+    uuid: "uc-012"
+    label: "Postconditions"
+    items:
+      - type: TextArea
+        uuid: "uc-011"
+        label: "Postconditions"

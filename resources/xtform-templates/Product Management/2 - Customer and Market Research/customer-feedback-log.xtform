@@ -1,0 +1,33 @@
+type: Form
+uuid: "cf-form-008"
+title: "Customer Feedback Log"
+description: "Running log of customer feedback collected across channels, tagged by theme and priority."
+elaborate_options:
+  - "Product Backlog"
+  - "Feature Adoption Report"
+  - "Customer Interview / Discovery Session Notes"
+items:
+  - type: Table
+    uuid: "cf-007"
+    label: "Feedback"
+    items:
+      - type: TextInput
+        uuid: "cf-001"
+        label: "Date"
+      - type: TextInput
+        uuid: "cf-002"
+        label: "Customer"
+      - type: TextInput
+        uuid: "cf-003"
+        label: "Channel"
+      - type: TextArea
+        uuid: "cf-004"
+        label: "Feedback"
+      - type: TextInput
+        uuid: "cf-005"
+        label: "Theme"
+      - type: Select
+        uuid: "cf-006"
+        label: "Priority"
+        options: "Low,Medium,High"
+    data: []

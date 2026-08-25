@@ -1,0 +1,24 @@
+type: Form
+uuid: "nfr-form-005"
+title: "Non-Functional Requirements Specification (NFR)"
+description: "Quality attributes the solution must satisfy — performance, security, usability, and similar."
+elaborate_options:
+  - "Functional Requirements Specification"
+  - "Acceptance Criteria & Test Scenarios"
+  - "Risk Register"
+items:
+  - type: Table
+    uuid: "nfr-004"
+    label: "Non-Functional Requirements"
+    items:
+      - type: Select
+        uuid: "nfr-001"
+        label: "Category"
+        options: "Performance,Security,Usability,Reliability,Scalability,Compliance"
+      - type: TextArea
+        uuid: "nfr-002"
+        label: "Requirement"
+      - type: TextInput
+        uuid: "nfr-003"
+        label: "Metric / Target"
+    data: []

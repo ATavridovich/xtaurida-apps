@@ -1,0 +1,27 @@
+type: Form
+uuid: "lc-form-006"
+title: "Launch Checklist"
+description: "Tracks the tasks required to launch a product or feature."
+elaborate_options:
+  - "Go-to-Market Plan"
+  - "Release Plan"
+  - "Post-Launch Review / Retrospective"
+items:
+  - type: Table
+    uuid: "lc-005"
+    label: "Checklist"
+    items:
+      - type: TextInput
+        uuid: "lc-001"
+        label: "Task"
+      - type: TextInput
+        uuid: "lc-002"
+        label: "Owner"
+      - type: TextInput
+        uuid: "lc-003"
+        label: "Due Date"
+      - type: Select
+        uuid: "lc-004"
+        label: "Status"
+        options: "Not Started,In Progress,Done"
+    data: []

@@ -1,0 +1,35 @@
+type: Form
+uuid: "vp-form-009"
+title: "Value Proposition Canvas"
+description: "Maps customer jobs, pains, and gains against the product's pain relievers and gain creators."
+elaborate_options:
+  - "Product Positioning Statement"
+  - "Customer Interview / Discovery Session Notes"
+  - "Product Requirements Document (PRD)"
+items:
+  - type: Section
+    uuid: "vp-004"
+    label: "Customer Profile"
+    items:
+      - type: TextArea
+        uuid: "vp-001"
+        label: "Customer Jobs"
+      - type: TextArea
+        uuid: "vp-002"
+        label: "Pains"
+      - type: TextArea
+        uuid: "vp-003"
+        label: "Gains"
+  - type: Section
+    uuid: "vp-008"
+    label: "Value Map"
+    items:
+      - type: TextArea
+        uuid: "vp-005"
+        label: "Products & Services"
+      - type: TextArea
+        uuid: "vp-006"
+        label: "Pain Relievers"
+      - type: TextArea
+        uuid: "vp-007"
+        label: "Gain Creators"

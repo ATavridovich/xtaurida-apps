@@ -1,0 +1,24 @@
+type: Form
+uuid: "mo-form-005"
+title: "Requirements Prioritization Matrix (MoSCoW)"
+description: "Prioritizes requirements using the MoSCoW method — Must, Should, Could, Won't have."
+elaborate_options:
+  - "Requirements Traceability Matrix (RTM)"
+  - "Scope Statement"
+  - "Change Request Log"
+items:
+  - type: Table
+    uuid: "mo-004"
+    label: "Requirements"
+    items:
+      - type: TextInput
+        uuid: "mo-001"
+        label: "Req ID"
+      - type: TextArea
+        uuid: "mo-002"
+        label: "Description"
+      - type: Select
+        uuid: "mo-003"
+        label: "Priority"
+        options: "Must,Should,Could,Won't"
+    data: []

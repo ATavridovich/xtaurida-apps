@@ -1,0 +1,41 @@
+type: Form
+uuid: "plr-form-010"
+title: "Post-Launch Review / Retrospective"
+description: "Reviews how a launch went — what worked, what didn't, and follow-up actions."
+elaborate_options:
+  - "Feature Adoption Report"
+  - "Launch Checklist"
+  - "Product Team Charter / Stakeholder Update"
+items:
+  - type: Section
+    uuid: "plr-002"
+    label: "What Went Well"
+    items:
+      - type: TextArea
+        uuid: "plr-001"
+        label: "What Went Well"
+  - type: Section
+    uuid: "plr-004"
+    label: "What Didn't"
+    items:
+      - type: TextArea
+        uuid: "plr-003"
+        label: "What Didn't"
+  - type: Section
+    uuid: "plr-009"
+    label: "Action Items"
+    items:
+      - type: Table
+        uuid: "plr-008"
+        label: "Action Items"
+        items:
+          - type: TextInput
+            uuid: "plr-005"
+            label: "Action"
+          - type: TextInput
+            uuid: "plr-006"
+            label: "Owner"
+          - type: TextInput
+            uuid: "plr-007"
+            label: "Due Date"
+        data: []

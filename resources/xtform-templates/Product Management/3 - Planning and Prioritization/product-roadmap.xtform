@@ -1,0 +1,27 @@
+type: Form
+uuid: "rm-form-006"
+title: "Product Roadmap"
+description: "Timeline of planned themes and initiatives for the product."
+elaborate_options:
+  - "OKR (Objectives & Key Results) Plan"
+  - "Release Plan"
+  - "Product Backlog"
+items:
+  - type: Table
+    uuid: "rm-005"
+    label: "Roadmap"
+    items:
+      - type: TextInput
+        uuid: "rm-001"
+        label: "Theme / Initiative"
+      - type: TextInput
+        uuid: "rm-002"
+        label: "Timeframe"
+      - type: Select
+        uuid: "rm-003"
+        label: "Status"
+        options: "Planned,In Progress,Done"
+      - type: TextInput
+        uuid: "rm-004"
+        label: "Owner"
+    data: []

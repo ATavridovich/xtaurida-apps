@@ -1,0 +1,29 @@
+type: Form
+uuid: "jm-form-007"
+title: "Customer / User Journey Map"
+description: "Maps a user's experience through a process or product, stage by stage, highlighting pain points and opportunities."
+elaborate_options:
+  - "Persona Profile"
+  - "Current State Assessment (As-Is)"
+  - "Gap Analysis"
+items:
+  - type: Table
+    uuid: "jm-006"
+    label: "Journey"
+    items:
+      - type: TextInput
+        uuid: "jm-001"
+        label: "Stage"
+      - type: TextArea
+        uuid: "jm-002"
+        label: "Action"
+      - type: TextInput
+        uuid: "jm-003"
+        label: "Touchpoint"
+      - type: TextArea
+        uuid: "jm-004"
+        label: "Pain Point"
+      - type: TextArea
+        uuid: "jm-005"
+        label: "Opportunity"
+    data: []

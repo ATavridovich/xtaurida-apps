@@ -1,0 +1,58 @@
+type: Form
+uuid: "es-form-015"
+title: "Elicitation Session Notes"
+description: "Notes from a workshop, interview, or meeting held to gather requirements or feedback."
+elaborate_options:
+  - "Business Requirements Document"
+  - "Use Case Specification"
+  - "Change Request Log"
+items:
+  - type: Section
+    uuid: "es-004"
+    label: "Session Details"
+    items:
+      - type: TextInput
+        uuid: "es-001"
+        label: "Date"
+      - type: TextInput
+        uuid: "es-002"
+        label: "Facilitator"
+      - type: TextArea
+        uuid: "es-003"
+        label: "Attendees"
+  - type: Section
+    uuid: "es-006"
+    label: "Agenda"
+    items:
+      - type: TextArea
+        uuid: "es-005"
+        label: "Agenda"
+  - type: Section
+    uuid: "es-008"
+    label: "Discussion Notes"
+    items:
+      - type: TextArea
+        uuid: "es-007"
+        label: "Notes"
+  - type: Section
+    uuid: "es-014"
+    label: "Action Items"
+    items:
+      - type: Table
+        uuid: "es-013"
+        label: "Action Items"
+        items:
+          - type: TextInput
+            uuid: "es-009"
+            label: "Action"
+          - type: TextInput
+            uuid: "es-010"
+            label: "Owner"
+          - type: TextInput
+            uuid: "es-011"
+            label: "Due Date"
+          - type: Select
+            uuid: "es-012"
+            label: "Status"
+            options: "Open,In Progress,Done"
+        data: []

@@ -1,0 +1,26 @@
+type: Form
+uuid: "usm-form-006"
+title: "User Story Map"
+description: "Maps user activities and tasks to stories, organized by release, to visualize the end-to-end journey."
+elaborate_options:
+  - "Product Backlog"
+  - "Product Roadmap"
+  - "Feature Specification"
+items:
+  - type: Table
+    uuid: "usm-005"
+    label: "Story Map"
+    items:
+      - type: TextInput
+        uuid: "usm-001"
+        label: "Activity / Backbone"
+      - type: TextInput
+        uuid: "usm-002"
+        label: "Task"
+      - type: TextInput
+        uuid: "usm-003"
+        label: "Story"
+      - type: TextInput
+        uuid: "usm-004"
+        label: "Release"
+    data: []

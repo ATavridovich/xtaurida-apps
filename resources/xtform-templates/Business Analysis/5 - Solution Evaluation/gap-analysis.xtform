@@ -1,0 +1,29 @@
+type: Form
+uuid: "ga-form-007"
+title: "Gap Analysis"
+description: "Compares current and desired states to identify gaps and the actions needed to close them."
+elaborate_options:
+  - "Business Case"
+  - "Functional Requirements Specification"
+  - "Cost-Benefit Analysis"
+items:
+  - type: Table
+    uuid: "ga-006"
+    label: "Gaps"
+    items:
+      - type: TextInput
+        uuid: "ga-001"
+        label: "Area"
+      - type: TextArea
+        uuid: "ga-002"
+        label: "Current State"
+      - type: TextArea
+        uuid: "ga-003"
+        label: "Desired State"
+      - type: TextArea
+        uuid: "ga-004"
+        label: "Gap"
+      - type: TextArea
+        uuid: "ga-005"
+        label: "Action"
+    data: []

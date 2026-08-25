@@ -1,0 +1,27 @@
+type: Form
+uuid: "pmf-form-006"
+title: "Product-Market Fit Survey"
+description: "Sean Ellis-style survey measuring how disappointed users would be if the product no longer existed."
+elaborate_options:
+  - "Churn / Retention Analysis"
+  - "Customer Feedback Log"
+  - "North Star Metric Definition"
+items:
+  - type: Section
+    uuid: "pmf-003"
+    label: "Survey Question"
+    items:
+      - type: TextInput
+        uuid: "pmf-001"
+        label: "How would you feel if you could no longer use this product?"
+      - type: Select
+        uuid: "pmf-002"
+        label: "Response"
+        options: "Very disappointed,Somewhat disappointed,Not disappointed"
+  - type: Section
+    uuid: "pmf-005"
+    label: "Notes"
+    items:
+      - type: TextArea
+        uuid: "pmf-004"
+        label: "Notes"

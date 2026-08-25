@@ -1,0 +1,31 @@
+type: Form
+uuid: "sh-form-007"
+title: "Stakeholder Analysis / RACI Matrix"
+description: "Catalog of stakeholders with their interest, influence, and how each will be engaged."
+elaborate_options:
+  - "Communication Plan"
+  - "Elicitation Session Notes"
+  - "Project / Initiative Charter"
+items:
+  - type: Table
+    uuid: "sh-006"
+    label: "Stakeholders"
+    items:
+      - type: TextInput
+        uuid: "sh-001"
+        label: "Name"
+      - type: TextInput
+        uuid: "sh-002"
+        label: "Role"
+      - type: Select
+        uuid: "sh-003"
+        label: "Interest"
+        options: "Low,Medium,High"
+      - type: Select
+        uuid: "sh-004"
+        label: "Influence"
+        options: "Low,Medium,High"
+      - type: TextArea
+        uuid: "sh-005"
+        label: "Engagement Strategy"
+    data: []

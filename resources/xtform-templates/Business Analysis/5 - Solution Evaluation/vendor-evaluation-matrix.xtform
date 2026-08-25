@@ -1,0 +1,29 @@
+type: Form
+uuid: "ve-form-007"
+title: "Vendor / Solution Evaluation Matrix"
+description: "Scores candidate vendors or solutions against weighted evaluation criteria."
+elaborate_options:
+  - "Cost-Benefit Analysis"
+  - "Decision Log"
+  - "Business Case"
+items:
+  - type: Table
+    uuid: "ve-006"
+    label: "Evaluation"
+    items:
+      - type: TextInput
+        uuid: "ve-001"
+        label: "Criterion"
+      - type: IntegerInput
+        uuid: "ve-002"
+        label: "Weight"
+      - type: IntegerInput
+        uuid: "ve-003"
+        label: "Vendor A Score"
+      - type: IntegerInput
+        uuid: "ve-004"
+        label: "Vendor B Score"
+      - type: IntegerInput
+        uuid: "ve-005"
+        label: "Vendor C Score"
+    data: []

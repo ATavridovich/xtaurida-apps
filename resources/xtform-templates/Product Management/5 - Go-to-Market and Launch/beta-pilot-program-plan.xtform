@@ -1,0 +1,48 @@
+type: Form
+uuid: "bp-form-012"
+title: "Beta / Pilot Program Plan"
+description: "Plan for running a beta or pilot program before general availability."
+elaborate_options:
+  - "Launch Checklist"
+  - "Customer Feedback Log"
+  - "Go-to-Market Plan"
+items:
+  - type: Section
+    uuid: "bp-002"
+    label: "Objectives"
+    items:
+      - type: TextArea
+        uuid: "bp-001"
+        label: "Objectives"
+  - type: Section
+    uuid: "bp-004"
+    label: "Participant Criteria"
+    items:
+      - type: TextArea
+        uuid: "bp-003"
+        label: "Participant Criteria"
+  - type: Section
+    uuid: "bp-009"
+    label: "Participants"
+    items:
+      - type: Table
+        uuid: "bp-008"
+        label: "Participants"
+        items:
+          - type: TextInput
+            uuid: "bp-005"
+            label: "Name"
+          - type: TextInput
+            uuid: "bp-006"
+            label: "Company"
+          - type: TextInput
+            uuid: "bp-007"
+            label: "Contact"
+        data: []
+  - type: Section
+    uuid: "bp-011"
+    label: "Success Criteria"
+    items:
+      - type: TextArea
+        uuid: "bp-010"
+        label: "Success Criteria"

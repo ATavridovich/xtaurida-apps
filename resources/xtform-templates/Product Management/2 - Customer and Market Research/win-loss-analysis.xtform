@@ -1,0 +1,30 @@
+type: Form
+uuid: "wl-form-007"
+title: "Win/Loss Analysis"
+description: "Analysis of why deals were won or lost, to inform product and go-to-market decisions."
+elaborate_options:
+  - "Competitive Analysis / Battlecard"
+  - "Sales Enablement Brief"
+  - "Customer Feedback Log"
+items:
+  - type: Table
+    uuid: "wl-006"
+    label: "Deals"
+    items:
+      - type: TextInput
+        uuid: "wl-001"
+        label: "Deal"
+      - type: Select
+        uuid: "wl-002"
+        label: "Outcome"
+        options: "Won,Lost"
+      - type: TextArea
+        uuid: "wl-003"
+        label: "Reason"
+      - type: TextInput
+        uuid: "wl-004"
+        label: "Competitor"
+      - type: TextArea
+        uuid: "wl-005"
+        label: "Feedback"
+    data: []

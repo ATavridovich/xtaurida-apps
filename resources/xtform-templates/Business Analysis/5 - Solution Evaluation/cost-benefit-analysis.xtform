@@ -1,0 +1,33 @@
+type: Form
+uuid: "cb-form-008"
+title: "Cost-Benefit Analysis"
+description: "Compares the costs and benefits of a proposed initiative or solution option."
+elaborate_options:
+  - "Business Case"
+  - "Vendor / Solution Evaluation Matrix"
+  - "KPI & Success Metrics / Status Report"
+items:
+  - type: Table
+    uuid: "cb-005"
+    label: "Costs and Benefits"
+    items:
+      - type: TextInput
+        uuid: "cb-001"
+        label: "Item"
+      - type: TextInput
+        uuid: "cb-002"
+        label: "Cost"
+      - type: TextInput
+        uuid: "cb-003"
+        label: "Benefit"
+      - type: TextInput
+        uuid: "cb-004"
+        label: "Timeframe"
+    data: []
+  - type: Section
+    uuid: "cb-007"
+    label: "Summary"
+    items:
+      - type: TextArea
+        uuid: "cb-006"
+        label: "Summary"

@@ -1,0 +1,29 @@
+type: Form
+uuid: "ca-form-007"
+title: "Competitive Analysis / Battlecard"
+description: "Comparison of competitors, their strengths, weaknesses, pricing, and how the product differentiates."
+elaborate_options:
+  - "Product Positioning Statement"
+  - "Win/Loss Analysis"
+  - "Pricing & Packaging Strategy"
+items:
+  - type: Table
+    uuid: "ca-006"
+    label: "Competitors"
+    items:
+      - type: TextInput
+        uuid: "ca-001"
+        label: "Competitor"
+      - type: TextArea
+        uuid: "ca-002"
+        label: "Strengths"
+      - type: TextArea
+        uuid: "ca-003"
+        label: "Weaknesses"
+      - type: TextInput
+        uuid: "ca-004"
+        label: "Pricing"
+      - type: TextArea
+        uuid: "ca-005"
+        label: "Our Differentiation"
+    data: []

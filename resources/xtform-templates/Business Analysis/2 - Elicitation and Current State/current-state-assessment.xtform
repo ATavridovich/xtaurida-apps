@@ -1,0 +1,35 @@
+type: Form
+uuid: "cs-form-008"
+title: "Current State Assessment (As-Is)"
+description: "Overview of how a process, system, or capability works today, including known pain points."
+elaborate_options:
+  - "Business Process Model (As-Is / To-Be)"
+  - "Gap Analysis"
+  - "Business Case"
+items:
+  - type: Section
+    uuid: "cs-002"
+    label: "Overview"
+    items:
+      - type: TextArea
+        uuid: "cs-001"
+        label: "Description"
+  - type: Section
+    uuid: "cs-007"
+    label: "Pain Points"
+    items:
+      - type: Table
+        uuid: "cs-006"
+        label: "Pain Points"
+        items:
+          - type: TextInput
+            uuid: "cs-003"
+            label: "Pain Point"
+          - type: Select
+            uuid: "cs-004"
+            label: "Severity"
+            options: "Low,Medium,High"
+          - type: TextArea
+            uuid: "cs-005"
+            label: "Impact"
+        data: []

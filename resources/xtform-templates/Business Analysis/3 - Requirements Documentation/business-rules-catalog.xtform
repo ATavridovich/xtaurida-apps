@@ -1,0 +1,26 @@
+type: Form
+uuid: "br-form-006"
+title: "Business Rules Catalog"
+description: "Registry of business rules governing how the organization operates or how the system must behave."
+elaborate_options:
+  - "Business Process Model (As-Is / To-Be)"
+  - "Functional Requirements Specification"
+  - "Data Dictionary & Glossary"
+items:
+  - type: Table
+    uuid: "br-005"
+    label: "Business Rules"
+    items:
+      - type: TextInput
+        uuid: "br-001"
+        label: "Rule ID"
+      - type: TextArea
+        uuid: "br-002"
+        label: "Statement"
+      - type: TextInput
+        uuid: "br-003"
+        label: "Source"
+      - type: TextInput
+        uuid: "br-004"
+        label: "Owner"
+    data: []

@@ -1,0 +1,40 @@
+type: Form
+uuid: "pp-form-010"
+title: "Persona Profile"
+description: "Fictional representative of a user group, capturing goals, pain points, and behaviors."
+elaborate_options:
+  - "Customer / User Journey Map"
+  - "User Story / Epic"
+  - "Use Case Specification"
+items:
+  - type: Section
+    uuid: "pp-003"
+    label: "Overview"
+    items:
+      - type: TextInput
+        uuid: "pp-001"
+        label: "Persona Name"
+      - type: TextInput
+        uuid: "pp-002"
+        label: "Role / Segment"
+  - type: Section
+    uuid: "pp-005"
+    label: "Goals"
+    items:
+      - type: TextArea
+        uuid: "pp-004"
+        label: "Goals"
+  - type: Section
+    uuid: "pp-007"
+    label: "Pain Points"
+    items:
+      - type: TextArea
+        uuid: "pp-006"
+        label: "Pain Points"
+  - type: Section
+    uuid: "pp-009"
+    label: "Behaviors"
+    items:
+      - type: TextArea
+        uuid: "pp-008"
+        label: "Behaviors"

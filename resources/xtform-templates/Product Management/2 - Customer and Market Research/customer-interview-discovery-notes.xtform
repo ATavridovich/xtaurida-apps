@@ -1,0 +1,51 @@
+type: Form
+uuid: "ci-form-013"
+title: "Customer Interview / Discovery Session Notes"
+description: "Notes from a customer interview or product discovery session."
+elaborate_options:
+  - "Customer Feedback Log"
+  - "Product Requirements Document (PRD)"
+  - "Win/Loss Analysis"
+items:
+  - type: Section
+    uuid: "ci-004"
+    label: "Session Details"
+    items:
+      - type: TextInput
+        uuid: "ci-001"
+        label: "Date"
+      - type: TextInput
+        uuid: "ci-002"
+        label: "Interviewer"
+      - type: TextInput
+        uuid: "ci-003"
+        label: "Participant"
+  - type: Section
+    uuid: "ci-006"
+    label: "Key Insights"
+    items:
+      - type: TextArea
+        uuid: "ci-005"
+        label: "Key Insights"
+  - type: Section
+    uuid: "ci-012"
+    label: "Action Items"
+    items:
+      - type: Table
+        uuid: "ci-011"
+        label: "Action Items"
+        items:
+          - type: TextInput
+            uuid: "ci-007"
+            label: "Action"
+          - type: TextInput
+            uuid: "ci-008"
+            label: "Owner"
+          - type: TextInput
+            uuid: "ci-009"
+            label: "Due Date"
+          - type: Select
+            uuid: "ci-010"
+            label: "Status"
+            options: "Open,In Progress,Done"
+        data: []

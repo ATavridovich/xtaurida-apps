@@ -1,0 +1,81 @@
+type: Form
+uuid: "brd-form-021"
+title: "Business Requirements Document (BRD)"
+description: "Consolidated business requirements for an initiative: objectives, scope, stakeholders, requirements, assumptions, and risks."
+elaborate_options:
+  - "Functional Requirements Specification"
+  - "Requirements Traceability Matrix"
+  - "Use Case Specification"
+items:
+  - type: Tab
+    uuid: "brd-002"
+    label: "Overview"
+    items:
+      - type: TextArea
+        uuid: "brd-001"
+        label: "Background"
+  - type: Tab
+    uuid: "brd-004"
+    label: "Objectives"
+    items:
+      - type: TextArea
+        uuid: "brd-003"
+        label: "Objectives"
+  - type: Tab
+    uuid: "brd-007"
+    label: "Scope"
+    items:
+      - type: TextArea
+        uuid: "brd-005"
+        label: "In Scope"
+      - type: TextArea
+        uuid: "brd-006"
+        label: "Out of Scope"
+  - type: Tab
+    uuid: "brd-011"
+    label: "Stakeholders"
+    items:
+      - type: Table
+        uuid: "brd-010"
+        label: "Stakeholders"
+        items:
+          - type: TextInput
+            uuid: "brd-008"
+            label: "Name"
+          - type: TextInput
+            uuid: "brd-009"
+            label: "Role"
+        data: []
+  - type: Tab
+    uuid: "brd-016"
+    label: "Requirements"
+    items:
+      - type: Table
+        uuid: "brd-015"
+        label: "Requirements"
+        items:
+          - type: TextInput
+            uuid: "brd-012"
+            label: "Req ID"
+          - type: TextArea
+            uuid: "brd-013"
+            label: "Description"
+          - type: Select
+            uuid: "brd-014"
+            label: "Priority"
+            options: "Must,Should,Could,Won't"
+        data: []
+  - type: Tab
+    uuid: "brd-018"
+    label: "Assumptions"
+    items:
+      - type: TextArea
+        uuid: "brd-017"
+        label: "Assumptions"
+  - type: Tab
+    uuid: "brd-020"
+    label: "Risks"
+    items:
+      - type: TextArea
+        uuid: "brd-019"
+        label: "Risks"

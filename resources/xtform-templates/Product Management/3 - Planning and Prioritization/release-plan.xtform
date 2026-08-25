@@ -1,0 +1,27 @@
+type: Form
+uuid: "rp-form-006"
+title: "Release Plan"
+description: "Plan of what ships in each upcoming release and when."
+elaborate_options:
+  - "Launch Checklist"
+  - "Product Roadmap"
+  - "Post-Launch Review / Retrospective"
+items:
+  - type: Table
+    uuid: "rp-005"
+    label: "Releases"
+    items:
+      - type: TextInput
+        uuid: "rp-001"
+        label: "Release"
+      - type: TextArea
+        uuid: "rp-002"
+        label: "Features Included"
+      - type: TextInput
+        uuid: "rp-003"
+        label: "Target Date"
+      - type: Select
+        uuid: "rp-004"
+        label: "Status"
+        options: "Planned,In Progress,Shipped"
+    data: []

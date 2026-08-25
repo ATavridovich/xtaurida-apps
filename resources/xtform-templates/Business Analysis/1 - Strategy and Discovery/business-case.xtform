@@ -1,0 +1,48 @@
+type: Form
+uuid: "bc-form-012"
+title: "Business Case"
+description: "Justification for a proposed initiative: problem, options considered, recommendation, and expected benefits."
+elaborate_options:
+  - "Detailed Cost-Benefit Analysis"
+  - "Risk Register"
+  - "Stakeholder Analysis / RACI Matrix"
+items:
+  - type: Section
+    uuid: "bc-002"
+    label: "Problem / Opportunity"
+    items:
+      - type: TextArea
+        uuid: "bc-001"
+        label: "Description"
+  - type: Section
+    uuid: "bc-004"
+    label: "Options Considered"
+    items:
+      - type: TextArea
+        uuid: "bc-003"
+        label: "Options"
+  - type: Section
+    uuid: "bc-007"
+    label: "Recommendation"
+    items:
+      - type: TextArea
+        uuid: "bc-005"
+        label: "Recommended Option"
+      - type: TextArea
+        uuid: "bc-006"
+        label: "Rationale"
+  - type: Section
+    uuid: "bc-011"
+    label: "Expected Benefits"
+    items:
+      - type: Table
+        uuid: "bc-010"
+        label: "Benefits"
+        items:
+          - type: TextInput
+            uuid: "bc-008"
+            label: "Benefit"
+          - type: TextInput
+            uuid: "bc-009"
+            label: "Success Metric"
+        data: []

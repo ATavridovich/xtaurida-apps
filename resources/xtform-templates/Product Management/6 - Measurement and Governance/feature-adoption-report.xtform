@@ -1,0 +1,29 @@
+type: Form
+uuid: "fa-form-007"
+title: "Feature Adoption Report"
+description: "Tracks how well a shipped feature is being adopted against its target."
+elaborate_options:
+  - "North Star Metric Definition"
+  - "Churn / Retention Analysis"
+  - "Post-Launch Review / Retrospective"
+items:
+  - type: Table
+    uuid: "fa-006"
+    label: "Adoption"
+    items:
+      - type: TextInput
+        uuid: "fa-001"
+        label: "Feature"
+      - type: TextInput
+        uuid: "fa-002"
+        label: "Launch Date"
+      - type: TextInput
+        uuid: "fa-003"
+        label: "Adoption Rate"
+      - type: TextInput
+        uuid: "fa-004"
+        label: "Target"
+      - type: TextArea
+        uuid: "fa-005"
+        label: "Notes"
+    data: []

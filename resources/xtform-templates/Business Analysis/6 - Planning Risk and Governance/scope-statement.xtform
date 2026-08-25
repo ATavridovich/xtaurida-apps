@@ -1,0 +1,23 @@
+type: Form
+uuid: "ss-form-005"
+title: "Scope Statement"
+description: "Defines what is explicitly in and out of scope for an initiative."
+elaborate_options:
+  - "Project / Initiative Charter"
+  - "Requirements Prioritization Matrix (MoSCoW)"
+  - "Change Request Log"
+items:
+  - type: Section
+    uuid: "ss-002"
+    label: "In Scope"
+    items:
+      - type: TextArea
+        uuid: "ss-001"
+        label: "In Scope"
+  - type: Section
+    uuid: "ss-004"
+    label: "Out of Scope"
+    items:
+      - type: TextArea
+        uuid: "ss-003"
+        label: "Out of Scope"

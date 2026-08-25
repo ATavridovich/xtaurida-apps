@@ -1,0 +1,30 @@
+type: Form
+uuid: "okr-form-007"
+title: "OKR (Objectives & Key Results) Plan"
+description: "Objectives and measurable key results for a planning period."
+elaborate_options:
+  - "Product Roadmap"
+  - "North Star Metric Definition"
+  - "Post-Launch Review / Retrospective"
+items:
+  - type: Table
+    uuid: "okr-006"
+    label: "OKRs"
+    items:
+      - type: TextInput
+        uuid: "okr-001"
+        label: "Objective"
+      - type: TextInput
+        uuid: "okr-002"
+        label: "Key Result"
+      - type: TextInput
+        uuid: "okr-003"
+        label: "Target"
+      - type: TextInput
+        uuid: "okr-004"
+        label: "Actual"
+      - type: Select
+        uuid: "okr-005"
+        label: "Status"
+        options: "On Track,At Risk,Off Track"
+    data: []

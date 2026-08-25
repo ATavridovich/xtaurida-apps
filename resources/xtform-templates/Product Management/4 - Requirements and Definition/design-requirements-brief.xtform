@@ -1,0 +1,37 @@
+type: Form
+uuid: "drb-form-009"
+title: "Design Requirements Brief"
+description: "Brief handed to design covering the objective, user needs, constraints, and success criteria for a feature."
+elaborate_options:
+  - "Feature Specification"
+  - "Product Requirements Document (PRD)"
+  - "Product Positioning Statement"
+items:
+  - type: Section
+    uuid: "drb-002"
+    label: "Objective"
+    items:
+      - type: TextArea
+        uuid: "drb-001"
+        label: "Objective"
+  - type: Section
+    uuid: "drb-004"
+    label: "User Needs"
+    items:
+      - type: TextArea
+        uuid: "drb-003"
+        label: "User Needs"
+  - type: Section
+    uuid: "drb-006"
+    label: "Constraints"
+    items:
+      - type: TextArea
+        uuid: "drb-005"
+        label: "Constraints"
+  - type: Section
+    uuid: "drb-008"
+    label: "Success Criteria"
+    items:
+      - type: TextArea
+        uuid: "drb-007"
+        label: "Success Criteria"

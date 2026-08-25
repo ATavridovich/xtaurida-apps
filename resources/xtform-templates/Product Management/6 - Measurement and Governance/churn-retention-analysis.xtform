@@ -1,0 +1,26 @@
+type: Form
+uuid: "cr-form-006"
+title: "Churn / Retention Analysis"
+description: "Analyzes customer retention and churn by cohort, with the top reasons for churn."
+elaborate_options:
+  - "Product-Market Fit Survey"
+  - "Customer Feedback Log"
+  - "North Star Metric Definition"
+items:
+  - type: Table
+    uuid: "cr-005"
+    label: "Cohorts"
+    items:
+      - type: TextInput
+        uuid: "cr-001"
+        label: "Cohort"
+      - type: TextInput
+        uuid: "cr-002"
+        label: "Retention Rate"
+      - type: TextInput
+        uuid: "cr-003"
+        label: "Churn Rate"
+      - type: TextArea
+        uuid: "cr-004"
+        label: "Top Reasons"
+    data: []

@@ -1,0 +1,26 @@
+type: Form
+uuid: "acs-form-006"
+title: "Acceptance Criteria Specification"
+description: "Defines the conditions a feature must satisfy to be considered complete, expressed as testable scenarios."
+elaborate_options:
+  - "Feature Specification"
+  - "Product Requirements Document (PRD)"
+  - "Launch Checklist"
+items:
+  - type: Table
+    uuid: "acs-005"
+    label: "Scenarios"
+    items:
+      - type: TextInput
+        uuid: "acs-001"
+        label: "Scenario"
+      - type: TextArea
+        uuid: "acs-002"
+        label: "Given"
+      - type: TextArea
+        uuid: "acs-003"
+        label: "When"
+      - type: TextArea
+        uuid: "acs-004"
+        label: "Then"
+    data: []

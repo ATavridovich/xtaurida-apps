@@ -1,0 +1,28 @@
+type: Form
+uuid: "ac2-form-006"
+title: "Assumptions, Constraints & Dependencies Log"
+description: "Registers assumptions, constraints, and dependencies that affect the initiative."
+elaborate_options:
+  - "Risk Register"
+  - "Scope Statement"
+  - "Project / Initiative Charter"
+items:
+  - type: Table
+    uuid: "ac2-005"
+    label: "Log"
+    items:
+      - type: Select
+        uuid: "ac2-001"
+        label: "Type"
+        options: "Assumption,Constraint,Dependency"
+      - type: TextArea
+        uuid: "ac2-002"
+        label: "Description"
+      - type: TextInput
+        uuid: "ac2-003"
+        label: "Owner"
+      - type: Select
+        uuid: "ac2-004"
+        label: "Status"
+        options: "Open,Resolved"
+    data: []

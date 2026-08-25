@@ -1,0 +1,27 @@
+type: Form
+uuid: "ms-form-006"
+title: "Market Sizing (TAM / SAM / SOM)"
+description: "Estimates the Total, Serviceable, and Obtainable market size for the product."
+elaborate_options:
+  - "Competitive Analysis / Battlecard"
+  - "Business Model Canvas"
+  - "Go-to-Market Plan"
+items:
+  - type: Table
+    uuid: "ms-005"
+    label: "Market Sizing"
+    items:
+      - type: Select
+        uuid: "ms-001"
+        label: "Segment"
+        options: "TAM,SAM,SOM"
+      - type: TextArea
+        uuid: "ms-002"
+        label: "Description"
+      - type: TextInput
+        uuid: "ms-003"
+        label: "Estimated Value"
+      - type: TextArea
+        uuid: "ms-004"
+        label: "Methodology"
+    data: []

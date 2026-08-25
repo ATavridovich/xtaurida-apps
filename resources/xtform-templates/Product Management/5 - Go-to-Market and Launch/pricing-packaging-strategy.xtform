@@ -1,0 +1,26 @@
+type: Form
+uuid: "pp-form-006"
+title: "Pricing & Packaging Strategy"
+description: "Defines pricing tiers, included features, and target segment for each package."
+elaborate_options:
+  - "Go-to-Market Plan"
+  - "Business Model Canvas"
+  - "Competitive Analysis / Battlecard"
+items:
+  - type: Table
+    uuid: "pp-005"
+    label: "Packages"
+    items:
+      - type: TextInput
+        uuid: "pp-001"
+        label: "Tier"
+      - type: TextInput
+        uuid: "pp-002"
+        label: "Price"
+      - type: TextArea
+        uuid: "pp-003"
+        label: "Features Included"
+      - type: TextInput
+        uuid: "pp-004"
+        label: "Target Segment"
+    data: []

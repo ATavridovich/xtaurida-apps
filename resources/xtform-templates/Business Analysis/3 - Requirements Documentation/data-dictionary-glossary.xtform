@@ -1,0 +1,26 @@
+type: Form
+uuid: "dd-form-006"
+title: "Data Dictionary & Glossary"
+description: "Definitions of key business terms and data elements used across requirements documentation."
+elaborate_options:
+  - "Business Rules Catalog"
+  - "Functional Requirements Specification"
+  - "Business Requirements Document (BRD)"
+items:
+  - type: Table
+    uuid: "dd-005"
+    label: "Terms"
+    items:
+      - type: TextInput
+        uuid: "dd-001"
+        label: "Term"
+      - type: TextArea
+        uuid: "dd-002"
+        label: "Definition"
+      - type: TextInput
+        uuid: "dd-003"
+        label: "Type"
+      - type: TextInput
+        uuid: "dd-004"
+        label: "Owner"
+    data: []

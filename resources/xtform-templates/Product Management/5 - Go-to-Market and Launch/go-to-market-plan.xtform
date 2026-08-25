@@ -1,0 +1,44 @@
+type: Form
+uuid: "gtm-form-011"
+title: "Go-to-Market Plan"
+description: "Plan for bringing a product or feature to market: audience, messaging, channels, timeline, and success metrics."
+elaborate_options:
+  - "Pricing & Packaging Strategy"
+  - "Launch Checklist"
+  - "Sales Enablement Brief"
+items:
+  - type: Tab
+    uuid: "gtm-002"
+    label: "Target Audience"
+    items:
+      - type: TextArea
+        uuid: "gtm-001"
+        label: "Target Audience"
+  - type: Tab
+    uuid: "gtm-004"
+    label: "Messaging"
+    items:
+      - type: TextArea
+        uuid: "gtm-003"
+        label: "Messaging"
+  - type: Tab
+    uuid: "gtm-006"
+    label: "Channels"
+    items:
+      - type: TextArea
+        uuid: "gtm-005"
+        label: "Channels"
+  - type: Tab
+    uuid: "gtm-008"
+    label: "Timeline"
+    items:
+      - type: TextArea
+        uuid: "gtm-007"
+        label: "Timeline"
+  - type: Tab
+    uuid: "gtm-010"
+    label: "Success Metrics"
+    items:
+      - type: TextArea
+        uuid: "gtm-009"
+        label: "Success Metrics"

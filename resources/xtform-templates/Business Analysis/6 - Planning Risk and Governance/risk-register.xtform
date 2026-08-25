@@ -1,0 +1,38 @@
+type: Form
+uuid: "rr-form-009"
+title: "Risk Register"
+description: "Tracks identified risks, their likelihood, impact, ownership, and mitigation plans."
+elaborate_options:
+  - "Assumptions, Constraints & Dependencies Log"
+  - "Decision Log"
+  - "Feasibility Study"
+items:
+  - type: Table
+    uuid: "rr-008"
+    label: "Risks"
+    items:
+      - type: TextInput
+        uuid: "rr-001"
+        label: "Risk ID"
+      - type: TextArea
+        uuid: "rr-002"
+        label: "Description"
+      - type: Select
+        uuid: "rr-003"
+        label: "Likelihood"
+        options: "Low,Medium,High"
+      - type: Select
+        uuid: "rr-004"
+        label: "Impact"
+        options: "Low,Medium,High"
+      - type: TextInput
+        uuid: "rr-005"
+        label: "Owner"
+      - type: TextArea
+        uuid: "rr-006"
+        label: "Mitigation"
+      - type: Select
+        uuid: "rr-007"
+        label: "Status"
+        options: "Open,Mitigated,Closed"
+    data: []

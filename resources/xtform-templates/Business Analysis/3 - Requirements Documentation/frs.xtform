@@ -1,0 +1,27 @@
+type: Form
+uuid: "frs-form-006"
+title: "Functional Requirements Specification (FRS)"
+description: "Detailed specification of what the system must do, expressed as discrete functional requirements."
+elaborate_options:
+  - "Non-Functional Requirements Specification"
+  - "Use Case Specification"
+  - "Requirements Traceability Matrix"
+items:
+  - type: Table
+    uuid: "frs-005"
+    label: "Functional Requirements"
+    items:
+      - type: TextInput
+        uuid: "frs-001"
+        label: "Req ID"
+      - type: TextArea
+        uuid: "frs-002"
+        label: "Description"
+      - type: Select
+        uuid: "frs-003"
+        label: "Priority"
+        options: "Must,Should,Could,Won't"
+      - type: TextInput
+        uuid: "frs-004"
+        label: "Source"
+    data: []

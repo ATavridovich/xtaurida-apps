@@ -1,0 +1,30 @@
+type: Form
+uuid: "pv-form-007"
+title: "Product Vision Statement"
+description: "Concise statement of the product's long-term purpose and the future state it aims to create."
+elaborate_options:
+  - "Product Positioning Statement"
+  - "Business Model Canvas"
+  - "Product Roadmap"
+items:
+  - type: Section
+    uuid: "pv-002"
+    label: "Vision Statement"
+    items:
+      - type: TextArea
+        uuid: "pv-001"
+        label: "Vision"
+  - type: Section
+    uuid: "pv-004"
+    label: "Target Customer"
+    items:
+      - type: TextArea
+        uuid: "pv-003"
+        label: "Target Customer"
+  - type: Section
+    uuid: "pv-006"
+    label: "Key Differentiator"
+    items:
+      - type: TextArea
+        uuid: "pv-005"
+        label: "Key Differentiator"

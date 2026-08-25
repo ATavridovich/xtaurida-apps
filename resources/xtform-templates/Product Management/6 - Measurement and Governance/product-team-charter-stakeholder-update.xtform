@@ -1,0 +1,38 @@
+type: Form
+uuid: "tc-form-009"
+title: "Product Team Charter / Stakeholder Update"
+description: "Summarizes the product team's mission, membership, and current priorities for stakeholders."
+elaborate_options:
+  - "Product Roadmap"
+  - "OKR (Objectives & Key Results) Plan"
+  - "Post-Launch Review / Retrospective"
+items:
+  - type: Section
+    uuid: "tc-002"
+    label: "Team Mission"
+    items:
+      - type: TextArea
+        uuid: "tc-001"
+        label: "Team Mission"
+  - type: Section
+    uuid: "tc-006"
+    label: "Team Members & Roles"
+    items:
+      - type: Table
+        uuid: "tc-005"
+        label: "Team Members"
+        items:
+          - type: TextInput
+            uuid: "tc-003"
+            label: "Name"
+          - type: TextInput
+            uuid: "tc-004"
+            label: "Role"
+        data: []
+  - type: Section
+    uuid: "tc-008"
+    label: "Current Priorities"
+    items:
+      - type: TextArea
+        uuid: "tc-007"
+        label: "Current Priorities"

@@ -1,0 +1,37 @@
+type: Form
+uuid: "kpi-form-009"
+title: "KPI & Success Metrics / Status Report"
+description: "Tracks key performance indicators against baseline and target values, and summarizes status."
+elaborate_options:
+  - "Business Case"
+  - "Cost-Benefit Analysis"
+  - "Decision Log"
+items:
+  - type: Table
+    uuid: "kpi-006"
+    label: "KPIs"
+    items:
+      - type: TextInput
+        uuid: "kpi-001"
+        label: "KPI"
+      - type: TextInput
+        uuid: "kpi-002"
+        label: "Baseline"
+      - type: TextInput
+        uuid: "kpi-003"
+        label: "Target"
+      - type: TextInput
+        uuid: "kpi-004"
+        label: "Actual"
+      - type: Select
+        uuid: "kpi-005"
+        label: "Trend"
+        options: "Improving,Stable,Declining"
+    data: []
+  - type: Section
+    uuid: "kpi-008"
+    label: "Summary"
+    items:
+      - type: TextArea
+        uuid: "kpi-007"
+        label: "Status Summary"

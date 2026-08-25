@@ -1,0 +1,32 @@
+type: Form
+uuid: "rice-form-008"
+title: "Prioritization Matrix (RICE / Value vs Effort)"
+description: "Scores candidate features by Reach, Impact, Confidence, and Effort to guide prioritization."
+elaborate_options:
+  - "Product Backlog"
+  - "Product Roadmap"
+  - "Feature Specification"
+items:
+  - type: Table
+    uuid: "rice-007"
+    label: "Prioritization"
+    items:
+      - type: TextInput
+        uuid: "rice-001"
+        label: "Feature"
+      - type: IntegerInput
+        uuid: "rice-002"
+        label: "Reach"
+      - type: IntegerInput
+        uuid: "rice-003"
+        label: "Impact"
+      - type: IntegerInput
+        uuid: "rice-004"
+        label: "Confidence"
+      - type: IntegerInput
+        uuid: "rice-005"
+        label: "Effort"
+      - type: DecimalInput
+        uuid: "rice-006"
+        label: "Score"
+    data: []

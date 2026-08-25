@@ -1,0 +1,38 @@
+type: Form
+uuid: "ns-form-009"
+title: "North Star Metric Definition"
+description: "Defines the single metric that best captures the core value the product delivers to customers."
+elaborate_options:
+  - "OKR (Objectives & Key Results) Plan"
+  - "Feature Adoption Report"
+  - "Product-Market Fit Survey"
+items:
+  - type: Section
+    uuid: "ns-002"
+    label: "Metric Definition"
+    items:
+      - type: TextArea
+        uuid: "ns-001"
+        label: "Metric Definition"
+  - type: Section
+    uuid: "ns-004"
+    label: "Why It Matters"
+    items:
+      - type: TextArea
+        uuid: "ns-003"
+        label: "Why It Matters"
+  - type: Section
+    uuid: "ns-008"
+    label: "Supporting Metrics"
+    items:
+      - type: Table
+        uuid: "ns-007"
+        label: "Supporting Metrics"
+        items:
+          - type: TextInput
+            uuid: "ns-005"
+            label: "Metric"
+          - type: TextInput
+            uuid: "ns-006"
+            label: "Target"
+        data: []

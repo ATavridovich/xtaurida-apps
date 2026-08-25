@@ -1,0 +1,29 @@
+type: Form
+uuid: "pb-form-006"
+title: "Product Backlog"
+description: "Prioritized list of product work items — epics, stories, and bugs."
+elaborate_options:
+  - "Prioritization Matrix (RICE / Value vs Effort)"
+  - "User Story Map"
+  - "Release Plan"
+items:
+  - type: Table
+    uuid: "pb-005"
+    label: "Backlog"
+    items:
+      - type: TextInput
+        uuid: "pb-001"
+        label: "Item"
+      - type: Select
+        uuid: "pb-002"
+        label: "Type"
+        options: "Epic,Story,Bug"
+      - type: Select
+        uuid: "pb-003"
+        label: "Priority"
+        options: "Low,Medium,High"
+      - type: Select
+        uuid: "pb-004"
+        label: "Status"
+        options: "Backlog,In Progress,Done"
+    data: []

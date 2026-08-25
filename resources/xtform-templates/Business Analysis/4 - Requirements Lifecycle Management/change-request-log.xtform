@@ -1,0 +1,30 @@
+type: Form
+uuid: "cr-form-007"
+title: "Change Request Log"
+description: "Tracks requested changes to scope or requirements, their impact, and disposition."
+elaborate_options:
+  - "Requirements Traceability Matrix (RTM)"
+  - "Decision Log"
+  - "Scope Statement"
+items:
+  - type: Table
+    uuid: "cr-006"
+    label: "Change Requests"
+    items:
+      - type: TextInput
+        uuid: "cr-001"
+        label: "CR ID"
+      - type: TextArea
+        uuid: "cr-002"
+        label: "Description"
+      - type: TextArea
+        uuid: "cr-003"
+        label: "Impact"
+      - type: Select
+        uuid: "cr-004"
+        label: "Status"
+        options: "Proposed,Approved,Rejected,Deferred"
+      - type: TextArea
+        uuid: "cr-005"
+        label: "Decision"
+    data: []

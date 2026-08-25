@@ -1,0 +1,33 @@
+type: Form
+uuid: "rtm-form-008"
+title: "Requirements Traceability Matrix (RTM)"
+description: "Links each requirement to its source, design, and test coverage to track completeness."
+elaborate_options:
+  - "Change Request Log"
+  - "Acceptance Criteria & Test Scenarios"
+  - "Functional Requirements Specification"
+items:
+  - type: Table
+    uuid: "rtm-007"
+    label: "Traceability"
+    items:
+      - type: TextInput
+        uuid: "rtm-001"
+        label: "Req ID"
+      - type: TextArea
+        uuid: "rtm-002"
+        label: "Description"
+      - type: TextInput
+        uuid: "rtm-003"
+        label: "Source"
+      - type: TextInput
+        uuid: "rtm-004"
+        label: "Design Ref"
+      - type: TextInput
+        uuid: "rtm-005"
+        label: "Test Ref"
+      - type: Select
+        uuid: "rtm-006"
+        label: "Status"
+        options: "Not Started,In Progress,Verified"
+    data: []

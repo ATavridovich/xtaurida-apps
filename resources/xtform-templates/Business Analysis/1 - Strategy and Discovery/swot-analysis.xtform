@@ -1,0 +1,37 @@
+type: Form
+uuid: "sw-form-009"
+title: "SWOT Analysis"
+description: "Structured analysis of Strengths, Weaknesses, Opportunities, and Threats."
+elaborate_options:
+  - "Strategic Recommendations"
+  - "Competitive & Market Analysis"
+  - "Business Case"
+items:
+  - type: Section
+    uuid: "sw-002"
+    label: "Strengths"
+    items:
+      - type: TextArea
+        uuid: "sw-001"
+        label: "Strengths"
+  - type: Section
+    uuid: "sw-004"
+    label: "Weaknesses"
+    items:
+      - type: TextArea
+        uuid: "sw-003"
+        label: "Weaknesses"
+  - type: Section
+    uuid: "sw-006"
+    label: "Opportunities"
+    items:
+      - type: TextArea
+        uuid: "sw-005"
+        label: "Opportunities"
+  - type: Section
+    uuid: "sw-008"
+    label: "Threats"
+    items:
+      - type: TextArea
+        uuid: "sw-007"
+        label: "Threats"
