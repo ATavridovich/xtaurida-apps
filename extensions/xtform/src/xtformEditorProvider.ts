@@ -6,9 +6,12 @@ import {
   updateNodeProperty,
   addNode,
   deleteNode,
-  findNode
+  findNode,
+  addTableRow,
+  deleteTableRow,
+  updateTableCell
 } from './parsers/yamlParser';
-import { XtformDocument as XtformDocumentType, XtformNode, XtformParseError } from './parsers/xtformDocument';
+import { XtformDocument as XtformDocumentType, XtformNode, XtformParseError, XtformTableRow } from './parsers/xtformDocument';
 import { getNonce } from './util/uuid';
 import { Disposable } from './util/dispose';
 
@@ -402,6 +405,30 @@ class XtformEditor extends Disposable {
         await this.editQueue;
         break;
 
+      case 'addTableRow':
+        // Add a new record to a Table component
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleAddTableRow(message.tableUuid, message.row);
+        });
+        await this.editQueue;
+        break;
+
+      case 'deleteTableRow':
+        // Remove a record from a Table component
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleDeleteTableRow(message.tableUuid, message.rowUuid);
+        });
+        await this.editQueue;
+        break;
+
+      case 'updateTableCell':
+        // Update a single cell within a Table component's record
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleUpdateTableCell(message.tableUuid, message.rowUuid, message.columnUuid, message.value);
+        });
+        await this.editQueue;
+        break;
+
       case 'runCommand':
         // Quick action from the form header menu (Clarify | Elaborate | Summarize)
         await this.handleRunCommand(message.command);
@@ -548,6 +575,54 @@ class XtformEditor extends Disposable {
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to duplicate component: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles adding a new record to a Table component
+   */
+  private async handleAddTableRow(tableUuid: string, row: XtformTableRow): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = addTableRow(doc, tableUuid, row);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to add table row: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles removing a record from a Table component
+   */
+  private async handleDeleteTableRow(tableUuid: string, rowUuid: string): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = deleteTableRow(doc, tableUuid, rowUuid);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to delete table row: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles updating a single cell within a Table component's record
+   */
+  private async handleUpdateTableCell(tableUuid: string, rowUuid: string, columnUuid: string, value: any): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = updateTableCell(doc, tableUuid, rowUuid, columnUuid, value);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to update table cell: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

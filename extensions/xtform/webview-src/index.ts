@@ -33,6 +33,15 @@ interface XtformDocument {
   applied_revision?: number | null;
 }
 
+// A single record in a Table component's `data` array. Field values are
+// keyed by the uuid of the column definition (a node in the Table's
+// `items`) they belong to.
+interface XtformTableRow {
+  uuid: string;
+  props?: Record<string, any>;
+  data?: Record<string, any>;
+}
+
 // Component Registry for Designer Palette
 interface ComponentRegistryEntry {
   type: string;
@@ -203,6 +212,27 @@ const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
       label: 'New Tab',
       items: []
     })
+  },
+  // Advanced Components
+  {
+    type: 'Table',
+    category: 'advanced',
+    label: 'Table',
+    icon: '▦',
+    description: 'Flat list of records — select the table, then click any Input to add it as a column',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'Table',
+      uuid,
+      label: 'New Table',
+      items: [
+        {
+          type: 'TextInput',
+          uuid: generateUuid(),
+          label: 'Column 1'
+        }
+      ],
+      data: []
+    })
   }
 ];
 
@@ -294,6 +324,7 @@ function renderNode(node: XtformNode): string {
     'Section': renderSection,
     'CollapsibleSection': renderCollapsibleSection,
     'Tab': renderTab,
+    'Table': renderTable,
   };
 
   const handler = handlers[node.type];
@@ -504,6 +535,79 @@ function renderTab(node: XtformNode): string {
   `;
 }
 
+// Renders the editable control for one Table cell, matching the column's
+// component type. Falls back to a plain text input for any unrecognized
+// (or default TextInput) column type.
+function renderCellInput(column: XtformNode, row: XtformTableRow): string {
+  const value = row.data ? row.data[column.uuid] : undefined;
+  const commonAttrs = `class="xtform-cell-input" data-row-uuid="${row.uuid}" data-col-uuid="${column.uuid}"`;
+
+  switch (column.type) {
+    case 'IntegerInput':
+      return `<input type="number" step="1" ${commonAttrs} value="${value ?? 0}" />`;
+    case 'DecimalInput':
+      return `<input type="number" step="0.01" ${commonAttrs} value="${value ?? 0}" />`;
+    case 'Checkbox':
+      return `<input type="checkbox" class="xtform-cell-checkbox" data-row-uuid="${row.uuid}" data-col-uuid="${column.uuid}" ${value === true ? 'checked' : ''} />`;
+    case 'DatePicker':
+      return `<input type="date" ${commonAttrs} value="${escapeHtml(String(value ?? ''))}" />`;
+    case 'TimePicker':
+      return `<input type="time" ${commonAttrs} value="${escapeHtml(String(value ?? ''))}" />`;
+    case 'Select':
+    case 'RadioGroup': {
+      const options = (column.options || '').split(',').map(opt => opt.trim()).filter(opt => opt);
+      const optionsHtml = options.map(opt =>
+        `<option value="${escapeHtml(opt)}" ${value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+      ).join('');
+      return `<select ${commonAttrs}>${optionsHtml}</select>`;
+    }
+    case 'TextArea':
+      return `<textarea class="xtform-cell-input xtform-cell-textarea" data-row-uuid="${row.uuid}" data-col-uuid="${column.uuid}">${escapeHtml(String(value ?? ''))}</textarea>`;
+    case 'TextInput':
+    default:
+      return `<input type="text" ${commonAttrs} value="${escapeHtml(String(value ?? ''))}" />`;
+  }
+}
+
+function renderTable(node: XtformNode): string {
+  const columns = node.items || [];
+  const rows: XtformTableRow[] = Array.isArray(node.data) ? node.data : [];
+
+  const headerHtml = columns.map(col => `
+    <th class="xtform-table-col-header xtform-component" data-uuid="${col.uuid}">${escapeHtml(col.label || col.type)}</th>
+  `).join('');
+
+  const rowsHtml = rows.map(row => `
+    <tr data-row-uuid="${row.uuid}">
+      ${columns.map(col => `<td>${renderCellInput(col, row)}</td>`).join('')}
+      <td class="xtform-table-row-actions">
+        <button class="xtform-table-row-delete" data-row-uuid="${row.uuid}" title="Delete row">✕</button>
+      </td>
+    </tr>
+  `).join('');
+
+  const emptyRowHtml = `<tr class="xtform-table-empty-row"><td colspan="${columns.length + 1}">No rows yet</td></tr>`;
+
+  return `
+    <div class="xtform-field xtform-table xtform-component" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <table class="xtform-table-grid" data-table-uuid="${node.uuid}">
+        <thead>
+          <tr>
+            ${headerHtml}
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || emptyRowHtml}
+        </tbody>
+      </table>
+      <button class="xtform-table-add-row" data-table-uuid="${node.uuid}">+ Add Row</button>
+    </div>
+  `;
+}
+
 function renderUnknown(node: XtformNode): string {
   return `
     <div class="xtform-component-unknown xtform-component" data-uuid="${node.uuid}">
@@ -624,6 +728,57 @@ function setupEventListeners(): void {
     } else {
       element.addEventListener('input', () => {
         sendUpdateValue(uuid, element.value);
+      });
+    }
+  });
+
+  // Table "+ Add Row" buttons
+  document.querySelectorAll('.xtform-table-add-row').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tableUuid = (btn as HTMLElement).getAttribute('data-table-uuid');
+      if (tableUuid) {
+        sendAddTableRow(tableUuid);
+      }
+    });
+  });
+
+  // Table row delete buttons
+  document.querySelectorAll('.xtform-table-row-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rowUuid = (btn as HTMLElement).getAttribute('data-row-uuid');
+      const table = (btn as HTMLElement).closest('table[data-table-uuid]');
+      const tableUuid = table?.getAttribute('data-table-uuid');
+      if (tableUuid && rowUuid) {
+        sendDeleteTableRow(tableUuid, rowUuid);
+      }
+    });
+  });
+
+  // Table cell value change listeners
+  document.querySelectorAll('.xtform-cell-input, .xtform-cell-checkbox').forEach(el => {
+    const element = el as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    const rowUuid = element.getAttribute('data-row-uuid');
+    const colUuid = element.getAttribute('data-col-uuid');
+    const table = element.closest('table[data-table-uuid]');
+    const tableUuid = table?.getAttribute('data-table-uuid');
+    if (!rowUuid || !colUuid || !tableUuid) return;
+
+    if (element instanceof HTMLInputElement && element.type === 'checkbox') {
+      element.addEventListener('change', () => {
+        sendUpdateTableCell(tableUuid, rowUuid, colUuid, element.checked);
+      });
+    } else if (element instanceof HTMLInputElement && element.type === 'number') {
+      element.addEventListener('input', () => {
+        const value = element.valueAsNumber;
+        if (!isNaN(value)) {
+          sendUpdateTableCell(tableUuid, rowUuid, colUuid, value);
+        }
+      });
+    } else {
+      element.addEventListener('input', () => {
+        sendUpdateTableCell(tableUuid, rowUuid, colUuid, element.value);
       });
     }
   });
@@ -865,7 +1020,9 @@ function generateUuid(): string {
 }
 
 function isContainer(type: string): boolean {
-  return ['Section', 'CollapsibleSection', 'Tab', 'Form'].includes(type);
+  // 'Table' is included so that selecting a Table and clicking any Input
+  // component in the palette adds it as a new column (see handleAddComponent).
+  return ['Section', 'CollapsibleSection', 'Tab', 'Form', 'Table'].includes(type);
 }
 
 function findNode(doc: XtformDocument, uuid: string): XtformNode | XtformDocument | null {
@@ -943,6 +1100,32 @@ function sendDuplicateComponent(uuid: string): void {
   });
 }
 
+function sendAddTableRow(tableUuid: string): void {
+  vscode.postMessage({
+    type: 'addTableRow',
+    tableUuid,
+    row: { uuid: generateUuid(), props: {}, data: {} } as XtformTableRow
+  });
+}
+
+function sendDeleteTableRow(tableUuid: string, rowUuid: string): void {
+  vscode.postMessage({
+    type: 'deleteTableRow',
+    tableUuid,
+    rowUuid
+  });
+}
+
+function sendUpdateTableCell(tableUuid: string, rowUuid: string, columnUuid: string, value: any): void {
+  vscode.postMessage({
+    type: 'updateTableCell',
+    tableUuid,
+    rowUuid,
+    columnUuid,
+    value
+  });
+}
+
 // === INITIALIZATION ===
 
 window.addEventListener('message', event => {
@@ -959,6 +1142,8 @@ window.addEventListener('message', event => {
           activeElement.tagName === 'SELECT'
         );
         const uuid = hasFocus ? activeElement?.getAttribute('data-uuid') : null;
+        const rowUuid = hasFocus ? activeElement?.getAttribute('data-row-uuid') : null;
+        const colUuid = hasFocus ? activeElement?.getAttribute('data-col-uuid') : null;
         const elementId = hasFocus ? activeElement?.id : null;
         const radioValue = (hasFocus && activeElement instanceof HTMLInputElement && activeElement.type === 'radio') ? activeElement.value : null;
         const selectionStart = (hasFocus && 'selectionStart' in activeElement!) ? activeElement!.selectionStart : null;
@@ -990,6 +1175,12 @@ window.addEventListener('message', event => {
                 `input[data-uuid="${uuid}"], textarea[data-uuid="${uuid}"], select[data-uuid="${uuid}"]`
               ) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
             }
+          }
+          // Otherwise restore a Table cell (identified by row + column uuid)
+          else if (rowUuid && colUuid) {
+            restoredElement = document.querySelector(
+              `[data-row-uuid="${rowUuid}"][data-col-uuid="${colUuid}"]`
+            ) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
           }
 
           if (restoredElement) {

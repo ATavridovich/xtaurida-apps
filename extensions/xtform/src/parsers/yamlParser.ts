@@ -1,5 +1,5 @@
 import * as YAML from 'yaml';
-import { XtformDocument, XtformNode, XtformParseError } from './xtformDocument';
+import { XtformDocument, XtformNode, XtformParseError, XtformTableRow } from './xtformDocument';
 
 /**
  * Parses .xtform document content into structured hierarchical format
@@ -268,4 +268,113 @@ export function findNode(
   }
 
   return null;
+}
+
+/**
+ * Finds a node by UUID within an already-cloned (mutable) tree.
+ * Shared by the Table row/cell mutators below.
+ */
+function findMutableNode(
+  root: XtformNode | XtformDocument,
+  uuid: string
+): XtformNode | XtformDocument | null {
+  if (root.uuid === uuid) {
+    return root;
+  }
+
+  if (root.items && Array.isArray(root.items)) {
+    for (const child of root.items) {
+      const found = findMutableNode(child, uuid);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Adds a new record to a Table component's `data` array
+ *
+ * @param doc - XtformDocument to update
+ * @param tableUuid - UUID of the Table node
+ * @param row - Row to append, e.g. `{ uuid, props: {}, data: {} }`
+ * @returns Updated XtformDocument
+ */
+export function addTableRow(
+  doc: XtformDocument,
+  tableUuid: string,
+  row: XtformTableRow
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  const table = findMutableNode(newDoc, tableUuid) as XtformNode | null;
+  if (table) {
+    if (!Array.isArray(table.data)) {
+      table.data = [];
+    }
+    table.data.push(row);
+  }
+
+  bumpRevision(newDoc);
+  return newDoc;
+}
+
+/**
+ * Removes a record from a Table component's `data` array
+ *
+ * @param doc - XtformDocument to update
+ * @param tableUuid - UUID of the Table node
+ * @param rowUuid - UUID of the record to remove
+ * @returns Updated XtformDocument
+ */
+export function deleteTableRow(
+  doc: XtformDocument,
+  tableUuid: string,
+  rowUuid: string
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  const table = findMutableNode(newDoc, tableUuid) as XtformNode | null;
+  if (table && Array.isArray(table.data)) {
+    table.data = table.data.filter((row: XtformTableRow) => row.uuid !== rowUuid);
+  }
+
+  bumpRevision(newDoc);
+  return newDoc;
+}
+
+/**
+ * Updates a single cell value within a Table component's record
+ *
+ * @param doc - XtformDocument to update
+ * @param tableUuid - UUID of the Table node
+ * @param rowUuid - UUID of the record to update
+ * @param columnUuid - UUID of the column (child node of the Table) being edited
+ * @param value - New cell value
+ * @returns Updated XtformDocument
+ */
+export function updateTableCell(
+  doc: XtformDocument,
+  tableUuid: string,
+  rowUuid: string,
+  columnUuid: string,
+  value: any
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  const table = findMutableNode(newDoc, tableUuid) as XtformNode | null;
+  const row = table && Array.isArray(table.data)
+    ? table.data.find((r: XtformTableRow) => r.uuid === rowUuid)
+    : undefined;
+  if (row) {
+    if (!row.data) {
+      row.data = {};
+    }
+    row.data[columnUuid] = value;
+  }
+
+  bumpRevision(newDoc);
+  return newDoc;
 }

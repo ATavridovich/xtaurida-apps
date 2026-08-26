@@ -348,6 +348,86 @@ body {
   background-color: var(--vscode-list-hoverBackground);
 }
 
+.xtform-table-col-header {
+  cursor: pointer;
+}
+
+.xtform-cell-input,
+.xtform-cell-checkbox {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background-color: transparent;
+  color: var(--vscode-input-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.xtform-cell-checkbox {
+  width: auto;
+  cursor: pointer;
+}
+
+.xtform-cell-input:hover,
+.xtform-cell-input:focus {
+  border-color: var(--vscode-input-border);
+  background-color: var(--vscode-input-background);
+}
+
+.xtform-cell-input:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.xtform-cell-textarea {
+  min-height: 32px;
+  resize: vertical;
+}
+
+.xtform-table-row-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.xtform-table-row-delete {
+  border: none;
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.xtform-table-row-delete:hover {
+  color: var(--vscode-errorForeground);
+  background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.xtform-table-empty-row td {
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.xtform-table-add-row {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.xtform-table-add-row:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
 /* Error display */
 .xtform-error {
   padding: 16px;

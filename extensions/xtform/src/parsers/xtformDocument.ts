@@ -37,8 +37,24 @@ export interface XtformNode {
   /** Child elements or column definitions (for containers) */
   items?: XtformNode[];
 
-  /** Current data - scalar or list of records (for data fields) */
+  /** Current data - scalar or list of records (for data fields, e.g. Table) */
   data?: any;
+}
+
+/**
+ * A single record in a Table component's `data` array.
+ * Field values are keyed by the uuid of the column definition (an
+ * XtformNode in the Table's `items`) they belong to.
+ */
+export interface XtformTableRow {
+  /** Stable record identifier */
+  uuid: string;
+
+  /** System properties - free map, not displayed */
+  props?: Record<string, any>;
+
+  /** Field values keyed by column uuid */
+  data?: Record<string, any>;
 }
 
 /**
