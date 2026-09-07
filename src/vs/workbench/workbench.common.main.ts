@@ -266,6 +266,9 @@ import './contrib/files/browser/files.contribution.js';
 // XTForm
 import './contrib/xtform/browser/xtform.contribution.js';
 
+// AppTwin
+import './contrib/appTwin/browser/appTwin.contribution.js';
+
 // Bulk Edit
 import './contrib/bulkEdit/browser/bulkEditService.js';
 import './contrib/bulkEdit/browser/preview/bulkEdit.contribution.js';
