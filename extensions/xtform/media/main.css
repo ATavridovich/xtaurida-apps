@@ -156,6 +156,50 @@ body {
   cursor: not-allowed;
 }
 
+/* Draft toolbar: "{title} (draft)" + Apply all / Cancel (spec/xtdraft-format.md) */
+.xtform-draft-badge {
+  font-size: 0.55em;
+  font-weight: 500;
+  color: var(--vscode-descriptionForeground);
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.xtform-draft-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.xtform-draft-apply-all,
+.xtform-draft-cancel {
+  padding: 4px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.xtform-draft-apply-all {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.xtform-draft-apply-all:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.xtform-draft-cancel {
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.xtform-draft-cancel:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
 /* Quick actions (Clarify | Elaborate | Summarize) */
 .xtform-quick-menu-btn {
   position: relative;
@@ -814,4 +858,56 @@ body {
   outline: 2px solid var(--vscode-focusBorder);
   outline-offset: 2px;
   background: var(--vscode-list-focusBackground, rgba(0, 122, 204, 0.1)) !important;
+}
+
+/* Draft item coloring (spec/xtdraft-format.md, "Rendering") */
+.xtform-draft-added {
+  background-color: var(--vscode-diffEditor-insertedLineBackground, rgba(63, 185, 80, 0.15));
+  border-left: 3px solid var(--vscode-gitDecoration-addedResourceForeground, #3fb950);
+  padding-left: 9px;
+}
+
+.xtform-draft-removed {
+  background-color: var(--vscode-diffEditor-removedLineBackground, rgba(248, 81, 73, 0.15));
+  border-left: 3px solid var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
+  padding-left: 9px;
+}
+
+/* Draft field buttons: Accept (✓) / Reject (✗), shown on hover */
+.xtform-draft-buttons {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.xtform-component:hover .xtform-draft-buttons {
+  opacity: 1;
+}
+
+.xtform-draft-accept,
+.xtform-draft-reject {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  background: var(--vscode-editorWidget-background);
+  color: var(--vscode-editor-foreground);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xtform-draft-accept:hover {
+  background: var(--vscode-gitDecoration-addedResourceForeground, #3fb950);
+  color: #fff;
+}
+
+.xtform-draft-reject:hover {
+  background: var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
+  color: #fff;
 }

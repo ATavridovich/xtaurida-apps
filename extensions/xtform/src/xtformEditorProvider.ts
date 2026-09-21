@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import * as vscode from 'vscode';
 import {
   parseXtformDocument,
@@ -11,13 +16,29 @@ import {
   deleteTableRow,
   updateTableCell
 } from './parsers/yamlParser';
-import { XtformDocument as XtformDocumentType, XtformNode, XtformParseError, XtformTableRow } from './parsers/xtformDocument';
+import { XtformDocument as XtformDocumentType, XtformNode, XtformTableRow } from './parsers/xtformDocument';
 import { getNonce } from './util/uuid';
 import { Disposable } from './util/dispose';
 
 interface FormQuickAction {
   command: string;
   title: string;
+}
+
+/**
+ * Draft-related commands declared by the xTaurida Agent extension's own
+ * manifest (`xtaurida.formDraftActions` in its package.json). Each is a
+ * plain command id — the Viewer renders fixed labels/icons for these (see
+ * spec/xtdraft-format.md, "Toolbar" and "Field buttons": "Both buttons are
+ * Agent commands — viewer just renders them") and never resolves the draft
+ * itself. `fieldAccept`/`fieldReject` are invoked with the item's uuid as
+ * their sole argument.
+ */
+interface FormDraftActions {
+  applyAll?: string;
+  cancel?: string;
+  fieldAccept?: string;
+  fieldReject?: string;
 }
 
 /**
@@ -48,6 +69,19 @@ function getFormApplyAction(): FormQuickAction | undefined {
   return action && typeof action.command === 'string' && typeof action.title === 'string'
     ? action
     : undefined;
+}
+
+/**
+ * Reads the draft toolbar/field commands declared by the xTaurida Agent
+ * extension's manifest (`xtaurida.formDraftActions`). Whether a given form
+ * actually shows the draft toolbar or field buttons is decided by the
+ * Viewer from the document's own `changes` fields, not here — see
+ * spec/xtdraft-format.md ("Detection").
+ */
+function getFormDraftActions(): FormDraftActions {
+  const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
+  const actions = agentExt?.packageJSON?.xtaurida?.formDraftActions;
+  return actions && typeof actions === 'object' ? actions : {};
 }
 
 /**
@@ -430,8 +464,11 @@ class XtformEditor extends Disposable {
         break;
 
       case 'runCommand':
-        // Quick action from the form header menu (Clarify | Elaborate | Summarize)
-        await this.handleRunCommand(message.command);
+        // Quick action from the form header menu, or a draft toolbar/field
+        // button (spec/xtdraft-format.md) — all Agent commands the Viewer
+        // just renders and dispatches, with optional arguments (e.g. a
+        // field's uuid for Accept/Reject).
+        await this.handleRunCommand(message.command, message.args);
         break;
 
       case 'error':
@@ -442,15 +479,15 @@ class XtformEditor extends Disposable {
   }
 
   /**
-   * Runs an SDD command (from the form header quick-menu) against this
-   * document. `command` is the full command id as declared by whichever
-   * extension contributed it (see `getFormQuickActions`) — resolves the
-   * target file from the active editor tab, which is this custom editor's
-   * panel.
+   * Runs an Agent command (from the form header quick-menu, or a draft
+   * toolbar/field button) against this document. `command` is the full
+   * command id as declared by whichever extension contributed it (see
+   * `getFormQuickActions`/`getFormDraftActions`) — resolves the target file
+   * from the active editor tab, which is this custom editor's panel.
    */
-  private async handleRunCommand(command: string): Promise<void> {
+  private async handleRunCommand(command: string, args?: unknown[]): Promise<void> {
     try {
-      await vscode.commands.executeCommand(command);
+      await vscode.commands.executeCommand(command, ...(args ?? []));
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to run "${command}": ${error instanceof Error ? error.message : String(error)}`
@@ -635,7 +672,8 @@ class XtformEditor extends Disposable {
       type: 'update',
       content: this.document.content,
       quickActions: getFormQuickActions(),
-      applyAction: getFormApplyAction() ?? null
+      applyAction: getFormApplyAction() ?? null,
+      draftActions: getFormDraftActions()
     });
   }
 }

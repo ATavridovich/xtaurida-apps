@@ -1,3 +1,8 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 import * as YAML from 'yaml';
 import { XtformDocument, XtformNode, XtformParseError, XtformTableRow } from './xtformDocument';
 
@@ -192,7 +197,16 @@ export function addNode(
 }
 
 /**
- * Deletes a node from the hierarchy
+ * Grouping container types whose children move up to the parent level
+ * automatically when the container itself is deleted, instead of being
+ * discarded along with it (see `deleteNode` below).
+ */
+const PROMOTABLE_CONTAINER_TYPES = new Set(['Section', 'CollapsibleSection', 'Tab']);
+
+/**
+ * Deletes a node from the hierarchy. Deleting a grouping container (Section,
+ * CollapsibleSection, Tab) promotes its children to the parent level in its
+ * place, rather than discarding them.
  *
  * @param doc - XtformDocument to update
  * @param uuid - UUID of the node to delete
@@ -208,7 +222,10 @@ export function deleteNode(doc: XtformDocument, uuid: string): XtformDocument {
 
     const index = parent.items.findIndex(child => child.uuid === uuid);
     if (index !== -1) {
-      parent.items.splice(index, 1);
+      const [removed] = parent.items.splice(index, 1);
+      if (PROMOTABLE_CONTAINER_TYPES.has(removed.type) && Array.isArray(removed.items)) {
+        parent.items.splice(index, 0, ...removed.items);
+      }
       return true;
     }
 

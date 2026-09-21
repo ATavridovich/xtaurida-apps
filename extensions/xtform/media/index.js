@@ -6447,6 +6447,7 @@ ${end.comment}` : end.comment;
   var quickActions = [];
   var openQuickMenu = null;
   var applyAction = null;
+  var draftActions = {};
   function closeQuickMenu() {
     if (openQuickMenu) {
       openQuickMenu.remove();
@@ -6476,13 +6477,39 @@ ${end.comment}` : end.comment;
     anchor.appendChild(menu);
     openQuickMenu = menu;
   }
-  function sendRunCommand(command) {
-    vscode.postMessage({ type: "runCommand", command });
+  function sendRunCommand(command, args) {
+    vscode.postMessage({ type: "runCommand", command, args });
   }
   function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+  function draftStatusClass(node) {
+    switch (node.changes?.status) {
+      case "added":
+        return " xtform-draft-added";
+      case "removed":
+        return " xtform-draft-removed";
+      default:
+        return "";
+    }
+  }
+  function draftButtonsHtml(node) {
+    if (!node.changes?.status) {
+      return "";
+    }
+    const acceptBtn = draftActions.fieldAccept ? `<button class="xtform-draft-accept" data-uuid="${node.uuid}" title="Accept">\u2713</button>` : "";
+    const rejectBtn = draftActions.fieldReject ? `<button class="xtform-draft-reject" data-uuid="${node.uuid}" title="Reject">\u2717</button>` : "";
+    if (!acceptBtn && !rejectBtn) {
+      return "";
+    }
+    return `
+    <div class="xtform-draft-buttons">
+      ${acceptBtn}
+      ${rejectBtn}
+    </div>
+  `;
   }
   function renderNode(node) {
     const handlers = {
@@ -6508,7 +6535,8 @@ ${end.comment}` : end.comment;
   }
   function renderTextInput(node) {
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
@@ -6522,7 +6550,8 @@ ${end.comment}` : end.comment;
   }
   function renderTextArea(node) {
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <textarea
@@ -6534,7 +6563,8 @@ ${end.comment}` : end.comment;
   }
   function renderIntegerInput(node) {
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
@@ -6549,7 +6579,8 @@ ${end.comment}` : end.comment;
   }
   function renderDecimalInput(node) {
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
@@ -6565,7 +6596,8 @@ ${end.comment}` : end.comment;
   function renderCheckbox(node) {
     const checked = node.value === true ? "checked" : "";
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <label class="xtform-checkbox-label">
         <input
@@ -6581,7 +6613,8 @@ ${end.comment}` : end.comment;
   }
   function renderDatePicker(node) {
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
@@ -6595,7 +6628,8 @@ ${end.comment}` : end.comment;
   }
   function renderTimePicker(node) {
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
@@ -6613,7 +6647,8 @@ ${end.comment}` : end.comment;
       (opt) => `<option value="${escapeHtml(opt)}" ${node.value === opt ? "selected" : ""}>${escapeHtml(opt)}</option>`
     ).join("");
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <select class="xtform-select" data-uuid="${node.uuid}">
@@ -6641,7 +6676,8 @@ ${end.comment}` : end.comment;
     `;
     }).join("");
     return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <div class="xtform-radio-group">
@@ -6653,7 +6689,8 @@ ${end.comment}` : end.comment;
   function renderSection(node) {
     const childrenHtml = node.items ? node.items.map((child) => renderNode(child)).join("\n") : "";
     return `
-    <div class="xtform-section xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}</h2>` : ""}
       <div class="xtform-section-content">
         ${childrenHtml}
@@ -6664,8 +6701,9 @@ ${end.comment}` : end.comment;
   function renderCollapsibleSection(node) {
     const childrenHtml = node.items ? node.items.map((child) => renderNode(child)).join("\n") : "";
     return `
-    <details class="xtform-collapsible-section xtform-component" data-uuid="${node.uuid}" open>
+    <details class="xtform-collapsible-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}" open>
       <summary>${node.label ? escapeHtml(node.label) : "Collapsible Section"}</summary>
+      ${draftButtonsHtml(node)}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -6675,7 +6713,8 @@ ${end.comment}` : end.comment;
   function renderTab(node) {
     const childrenHtml = node.items ? node.items.map((child) => renderNode(child)).join("\n") : "";
     return `
-    <div class="xtform-tab xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-tab xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : "Tab"}</div>
       <div class="xtform-tab-content">
         ${childrenHtml}
@@ -6728,7 +6767,8 @@ ${end.comment}` : end.comment;
   `).join("");
     const emptyRowHtml = `<tr class="xtform-table-empty-row"><td colspan="${columns.length + 1}">No rows yet</td></tr>`;
     return `
-    <div class="xtform-field xtform-table xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-table xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <table class="xtform-table-grid" data-table-uuid="${node.uuid}">
@@ -6765,10 +6805,16 @@ ${end.comment}` : end.comment;
       const applyEligible = applyAction !== null && doc.show_apply_action === true;
       const applyEnabled = applyEligible && (doc.applied_revision == null || doc.applied_revision !== doc.revision);
       const applyButton = applyEligible ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction.command)}"${applyEnabled ? "" : " disabled"}>${escapeHtml(applyAction.title)}</button>` : "";
+      const hasPendingChanges = !!doc.changes?.kind;
+      const draftBadge = hasPendingChanges ? '<span class="xtform-draft-badge">(pending changes)</span>' : "";
+      const applyAllBtn = hasPendingChanges && draftActions.applyAll ? `<button class="xtform-draft-apply-all">Apply all</button>` : "";
+      const cancelBtn = hasPendingChanges && draftActions.cancel ? `<button class="xtform-draft-cancel">Cancel</button>` : "";
+      const draftToolbarHtml = applyAllBtn || cancelBtn ? `<div class="xtform-draft-actions">${applyAllBtn}${cancelBtn}</div>` : "";
       const formHeader = `
       <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
         <div class="xtform-form-header-row">
-          <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")}</h2>
+          <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")} ${draftBadge}</h2>
+          ${draftToolbarHtml}
           ${applyButton}
           ${quickMenuButton}
         </div>
@@ -6857,6 +6903,40 @@ ${end.comment}` : end.comment;
         const tableUuid = table?.getAttribute("data-table-uuid");
         if (tableUuid && rowUuid) {
           sendDeleteTableRow(tableUuid, rowUuid);
+        }
+      });
+    });
+    document.querySelectorAll(".xtform-draft-accept").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const uuid = btn.getAttribute("data-uuid");
+        if (uuid && draftActions.fieldAccept) {
+          sendRunCommand(draftActions.fieldAccept, [uuid]);
+        }
+      });
+    });
+    document.querySelectorAll(".xtform-draft-reject").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const uuid = btn.getAttribute("data-uuid");
+        if (uuid && draftActions.fieldReject) {
+          sendRunCommand(draftActions.fieldReject, [uuid]);
+        }
+      });
+    });
+    document.querySelectorAll(".xtform-draft-apply-all").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (draftActions.applyAll) {
+          sendRunCommand(draftActions.applyAll);
+        }
+      });
+    });
+    document.querySelectorAll(".xtform-draft-cancel").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (draftActions.cancel) {
+          sendRunCommand(draftActions.cancel);
         }
       });
     });
@@ -7178,6 +7258,7 @@ ${end.comment}` : end.comment;
           const selectionEnd = hasFocus && "selectionEnd" in activeElement ? activeElement.selectionEnd : null;
           quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
           applyAction = message.applyAction ?? null;
+          draftActions = message.draftActions && typeof message.draftActions === "object" ? message.draftActions : {};
           currentDoc = parse(message.content);
           renderForm(currentDoc);
           if (hasFocus) {

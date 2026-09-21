@@ -1,6 +1,30 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
 /**
  * XTForm document model
  */
+
+/**
+ * Marks the root document as carrying a pending set of proposed changes —
+ * see spec/xtdraft-format.md ("Detection"). Any `kind` value shows the
+ * draft toolbar; the value itself is meaningful to whichever Agent proposed
+ * the changes, not to the Viewer.
+ */
+export interface XtformRootChanges {
+  kind: string;
+}
+
+/**
+ * Marks an individual item as part of a pending draft proposal — see
+ * spec/xtdraft-format.md ("Rendering", "Field buttons"). Absent on items
+ * that aren't part of a pending proposal (rendered with no special color).
+ */
+export interface XtformItemChanges {
+  status: 'added' | 'removed';
+}
 
 /**
  * Represents a node in the XTForm hierarchy
@@ -39,6 +63,9 @@ export interface XtformNode {
 
   /** Current data - scalar or list of records (for data fields, e.g. Table) */
   data?: any;
+
+  /** Pending draft proposal for this item — see `XtformItemChanges` */
+  changes?: XtformItemChanges;
 }
 
 /**
@@ -94,6 +121,9 @@ export interface XtformDocument {
 
   /** AI behaviour instructions - see Instructions section */
   instructions?: Record<string, string>;
+
+  /** Presence of `changes.kind` signals a pending draft — see `XtformRootChanges` */
+  changes?: XtformRootChanges;
 
   /** Child elements - sections and fields */
   items?: XtformNode[];

@@ -4,6 +4,20 @@
 import * as YAML from 'yaml';
 
 // Type definitions matching backend
+
+// Presence of `changes.kind` on the root document signals a pending draft —
+// see spec/xtdraft-format.md ("Detection"). The value itself is meaningful
+// to whichever Agent proposed the changes, not to the Viewer.
+interface XtformRootChanges {
+  kind: string;
+}
+
+// Marks an individual item as part of a pending draft proposal — see
+// spec/xtdraft-format.md ("Rendering", "Field buttons").
+interface XtformItemChanges {
+  status: 'added' | 'removed';
+}
+
 interface XtformNode {
   type: string;
   uuid: string;
@@ -16,6 +30,7 @@ interface XtformNode {
   options?: string;
   items?: XtformNode[];
   data?: any;
+  changes?: XtformItemChanges;
 }
 
 interface XtformDocument {
@@ -31,6 +46,7 @@ interface XtformDocument {
   show_apply_action?: boolean;
   revision?: number;
   applied_revision?: number | null;
+  changes?: XtformRootChanges;
 }
 
 // A single record in a Table component's `data` array. Field values are
@@ -264,6 +280,24 @@ let openQuickMenu: HTMLElement | null = null;
 
 let applyAction: QuickAction | null = null;
 
+// === DRAFT ACTIONS ===
+// Draft toolbar (Apply all / Cancel) and per-field (✓ / ✗) commands — see
+// spec/xtdraft-format.md. Declared once by whichever extension owns them
+// (see 'update' message handler); "Both buttons are Agent commands — viewer
+// just renders them", so these are plain command ids with fixed labels,
+// dispatched the same way as `runCommand` above. Whether the draft toolbar
+// or a given field's buttons actually render is decided purely from the
+// document's own `changes` fields in renderForm()/renderNode(), not here.
+
+interface DraftActions {
+  applyAll?: string;
+  cancel?: string;
+  fieldAccept?: string;
+  fieldReject?: string;
+}
+
+let draftActions: DraftActions = {};
+
 function closeQuickMenu(): void {
   if (openQuickMenu) {
     openQuickMenu.remove();
@@ -298,8 +332,8 @@ function toggleQuickMenu(anchor: HTMLElement): void {
   openQuickMenu = menu;
 }
 
-function sendRunCommand(command: string): void {
-  vscode.postMessage({ type: 'runCommand', command });
+function sendRunCommand(command: string, args?: unknown[]): void {
+  vscode.postMessage({ type: 'runCommand', command, args });
 }
 
 // === RENDERING FUNCTIONS ===
@@ -308,6 +342,44 @@ function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// === DRAFT RENDERING (spec/xtdraft-format.md) ===
+// Applied by every render*() function below to whichever node it renders:
+// a color class on the item's outer wrapper based on `changes.status`, plus
+// the inline Accept (✓) / Reject (✗) buttons shown on hover. Both buttons
+// are Agent commands — the Viewer just renders and dispatches them.
+
+function draftStatusClass(node: XtformNode): string {
+  switch (node.changes?.status) {
+    case 'added': return ' xtform-draft-added';
+    case 'removed': return ' xtform-draft-removed';
+    default: return '';
+  }
+}
+
+function draftButtonsHtml(node: XtformNode): string {
+  if (!node.changes?.status) {
+    return '';
+  }
+
+  const acceptBtn = draftActions.fieldAccept
+    ? `<button class="xtform-draft-accept" data-uuid="${node.uuid}" title="Accept">✓</button>`
+    : '';
+  const rejectBtn = draftActions.fieldReject
+    ? `<button class="xtform-draft-reject" data-uuid="${node.uuid}" title="Reject">✗</button>`
+    : '';
+
+  if (!acceptBtn && !rejectBtn) {
+    return '';
+  }
+
+  return `
+    <div class="xtform-draft-buttons">
+      ${acceptBtn}
+      ${rejectBtn}
+    </div>
+  `;
 }
 
 function renderNode(node: XtformNode): string {
@@ -337,7 +409,8 @@ function renderNode(node: XtformNode): string {
 
 function renderTextInput(node: XtformNode): string {
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
@@ -352,7 +425,8 @@ function renderTextInput(node: XtformNode): string {
 
 function renderTextArea(node: XtformNode): string {
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <textarea
@@ -365,7 +439,8 @@ function renderTextArea(node: XtformNode): string {
 
 function renderIntegerInput(node: XtformNode): string {
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
@@ -381,7 +456,8 @@ function renderIntegerInput(node: XtformNode): string {
 
 function renderDecimalInput(node: XtformNode): string {
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
@@ -398,7 +474,8 @@ function renderDecimalInput(node: XtformNode): string {
 function renderCheckbox(node: XtformNode): string {
   const checked = node.value === true ? 'checked' : '';
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <label class="xtform-checkbox-label">
         <input
@@ -415,7 +492,8 @@ function renderCheckbox(node: XtformNode): string {
 
 function renderDatePicker(node: XtformNode): string {
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
@@ -430,7 +508,8 @@ function renderDatePicker(node: XtformNode): string {
 
 function renderTimePicker(node: XtformNode): string {
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
@@ -450,7 +529,8 @@ function renderSelect(node: XtformNode): string {
   ).join('');
 
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <select class="xtform-select" data-uuid="${node.uuid}">
@@ -480,7 +560,8 @@ function renderRadioGroup(node: XtformNode): string {
   }).join('');
 
   return `
-    <div class="xtform-field xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <div class="xtform-radio-group">
@@ -496,7 +577,8 @@ function renderSection(node: XtformNode): string {
     : '';
 
   return `
-    <div class="xtform-section xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}</h2>` : ''}
       <div class="xtform-section-content">
         ${childrenHtml}
@@ -511,8 +593,9 @@ function renderCollapsibleSection(node: XtformNode): string {
     : '';
 
   return `
-    <details class="xtform-collapsible-section xtform-component" data-uuid="${node.uuid}" open>
+    <details class="xtform-collapsible-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}" open>
       <summary>${node.label ? escapeHtml(node.label) : 'Collapsible Section'}</summary>
+      ${draftButtonsHtml(node)}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -526,7 +609,8 @@ function renderTab(node: XtformNode): string {
     : '';
 
   return `
-    <div class="xtform-tab xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-tab xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : 'Tab'}</div>
       <div class="xtform-tab-content">
         ${childrenHtml}
@@ -589,7 +673,8 @@ function renderTable(node: XtformNode): string {
   const emptyRowHtml = `<tr class="xtform-table-empty-row"><td colspan="${columns.length + 1}">No rows yet</td></tr>`;
 
   return `
-    <div class="xtform-field xtform-table xtform-component" data-uuid="${node.uuid}">
+    <div class="xtform-field xtform-table xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${draftButtonsHtml(node)}
       ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <table class="xtform-table-grid" data-table-uuid="${node.uuid}">
@@ -639,10 +724,26 @@ function renderForm(doc: XtformDocument): void {
       ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction!.command)}"${applyEnabled ? '' : ' disabled'}>${escapeHtml(applyAction!.title)}</button>`
       : '';
 
+    // Draft toolbar: "{title} (pending changes)" + Apply all / Cancel
+    // (spec/xtdraft-format.md). Shown only when `changes.kind` is present
+    // in root fields; each button only if its command is declared.
+    const hasPendingChanges = !!doc.changes?.kind;
+    const draftBadge = hasPendingChanges ? '<span class="xtform-draft-badge">(pending changes)</span>' : '';
+    const applyAllBtn = hasPendingChanges && draftActions.applyAll
+      ? `<button class="xtform-draft-apply-all">Apply all</button>`
+      : '';
+    const cancelBtn = hasPendingChanges && draftActions.cancel
+      ? `<button class="xtform-draft-cancel">Cancel</button>`
+      : '';
+    const draftToolbarHtml = (applyAllBtn || cancelBtn)
+      ? `<div class="xtform-draft-actions">${applyAllBtn}${cancelBtn}</div>`
+      : '';
+
     const formHeader = `
       <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
         <div class="xtform-form-header-row">
-          <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')}</h2>
+          <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')} ${draftBadge}</h2>
+          ${draftToolbarHtml}
           ${applyButton}
           ${quickMenuButton}
         </div>
@@ -752,6 +853,47 @@ function setupEventListeners(): void {
       const tableUuid = table?.getAttribute('data-table-uuid');
       if (tableUuid && rowUuid) {
         sendDeleteTableRow(tableUuid, rowUuid);
+      }
+    });
+  });
+
+  // Draft field buttons: Accept (✓) / Reject (✗) — Agent commands, the
+  // Viewer just dispatches them with the item's uuid (spec/xtdraft-format.md)
+  document.querySelectorAll('.xtform-draft-accept').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const uuid = (btn as HTMLElement).getAttribute('data-uuid');
+      if (uuid && draftActions.fieldAccept) {
+        sendRunCommand(draftActions.fieldAccept, [uuid]);
+      }
+    });
+  });
+
+  document.querySelectorAll('.xtform-draft-reject').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const uuid = (btn as HTMLElement).getAttribute('data-uuid');
+      if (uuid && draftActions.fieldReject) {
+        sendRunCommand(draftActions.fieldReject, [uuid]);
+      }
+    });
+  });
+
+  // Draft toolbar: Apply all / Cancel — Agent commands (spec/xtdraft-format.md)
+  document.querySelectorAll('.xtform-draft-apply-all').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (draftActions.applyAll) {
+        sendRunCommand(draftActions.applyAll);
+      }
+    });
+  });
+
+  document.querySelectorAll('.xtform-draft-cancel').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (draftActions.cancel) {
+        sendRunCommand(draftActions.cancel);
       }
     });
   });
@@ -1151,6 +1293,7 @@ window.addEventListener('message', event => {
 
         quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
         applyAction = message.applyAction ?? null;
+        draftActions = message.draftActions && typeof message.draftActions === 'object' ? message.draftActions : {};
         currentDoc = YAML.parse(message.content) as XtformDocument;
         renderForm(currentDoc);
 
