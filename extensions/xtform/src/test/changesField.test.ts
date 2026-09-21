@@ -82,6 +82,85 @@ items:
     });
   });
 
+  suite('dotted key notation (spec/xtform-format.md "Instructions")', () => {
+    function makeDocWithDottedChanges(): XtformDocument {
+      return parseXtformDocument(`
+type: Form
+uuid: "form-001"
+title: "Test Form"
+changes.kind: refine
+changes.generated_at: "2026-09-21T16:44:07.976Z"
+changes.summary:
+  added: 1
+  modified: 0
+  removed: 0
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Concurrent Users"
+    value: "50"
+    changes.status: added
+  - type: TextInput
+    uuid: "f-002"
+    label: "Old Description"
+    value: "..."
+    changes.status: removed
+  - type: TextInput
+    uuid: "f-003"
+    label: "Untouched"
+    value: "same"
+    instructions.on_change: "Update downstream config"
+`);
+    }
+
+    test('unflattens root changes.* keys into a nested changes object', () => {
+      const doc = makeDocWithDottedChanges();
+
+      assert.strictEqual(doc.changes?.kind, 'refine');
+      assert.strictEqual(doc.changes?.generated_at, '2026-09-21T16:44:07.976Z');
+      assert.deepStrictEqual(doc.changes?.summary, { added: 1, modified: 0, removed: 0 });
+    });
+
+    test('unflattens per-item changes.status into a nested changes object', () => {
+      const doc = makeDocWithDottedChanges();
+
+      const added = doc.items!.find(i => i.uuid === 'f-001')!;
+      const removed = doc.items!.find(i => i.uuid === 'f-002')!;
+      const untouched = doc.items!.find(i => i.uuid === 'f-003')!;
+
+      assert.deepStrictEqual(added.changes, { status: 'added' });
+      assert.deepStrictEqual(removed.changes, { status: 'removed' });
+      assert.strictEqual(untouched.changes, undefined);
+    });
+
+    test('unflattens instructions.* alongside changes.* on the same item', () => {
+      const doc = makeDocWithDottedChanges();
+
+      const untouched = doc.items!.find(i => i.uuid === 'f-003')!;
+      assert.deepStrictEqual(untouched.instructions, { on_change: 'Update downstream config' });
+    });
+
+    test('round-trips dotted input back to a re-parseable document', () => {
+      const doc = makeDocWithDottedChanges();
+      const reparsed = parseXtformDocument(serializeXtformDocument(doc));
+
+      assert.deepStrictEqual(reparsed.changes, doc.changes);
+      assert.deepStrictEqual(
+        reparsed.items!.find(i => i.uuid === 'f-001')!.changes,
+        { status: 'added' }
+      );
+    });
+
+    test('serializes nested changes/instructions back to flat dotted keys', () => {
+      const doc = makeDocWithDottedChanges();
+      const yaml = serializeXtformDocument(doc);
+
+      assert.ok(yaml.includes('changes.kind'));
+      assert.ok(yaml.includes('changes.status'));
+      assert.ok(yaml.includes('instructions.on_change'));
+    });
+  });
+
   suite('generic mutators preserve unrelated changes fields', () => {
     test('updateNodeValue leaves other items\' changes untouched', () => {
       const doc = makeDocWithChanges();

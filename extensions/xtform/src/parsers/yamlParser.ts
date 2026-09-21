@@ -7,6 +7,81 @@ import * as YAML from 'yaml';
 import { XtformDocument, XtformNode, XtformParseError, XtformTableRow } from './xtformDocument';
 
 /**
+ * Node-level prefixes that are written as flat dotted keys on disk
+ * (`instructions.on_change`, `changes.status`, ...) but consumed as nested
+ * objects (`node.instructions.on_change`, `node.changes.status`) everywhere
+ * else — see spec/xtform-format.md ("Instructions") and
+ * spec/xtdraft-format.md. `unflattenNode`/`flattenNode` convert between the
+ * two around the YAML boundary.
+ */
+const DOTTED_KEY_PREFIXES = ['instructions', 'changes'] as const;
+
+/**
+ * Converts flat dotted keys (`instructions.on_change`, `changes.data.on_add`)
+ * found on a freshly-parsed YAML node into the nested `node.instructions` /
+ * `node.changes` objects the rest of the codebase expects. Mutates in place
+ * and recurses into `items`.
+ *
+ * Exported so the webview (`webview-src/index.ts`), which parses `.xtform`
+ * YAML independently for rendering, can apply the same conversion instead of
+ * duplicating it.
+ */
+export function unflattenNode(node: Record<string, any>): void {
+  for (const key of Object.keys(node)) {
+    const dotIndex = key.indexOf('.');
+    if (dotIndex === -1) {
+      continue;
+    }
+
+    const prefix = key.substring(0, dotIndex);
+    if (!(DOTTED_KEY_PREFIXES as readonly string[]).includes(prefix)) {
+      continue;
+    }
+
+    const rest = key.substring(dotIndex + 1);
+    if (!node[prefix] || typeof node[prefix] !== 'object') {
+      node[prefix] = {};
+    }
+    node[prefix][rest] = node[key];
+    delete node[key];
+  }
+
+  if (Array.isArray(node.items)) {
+    for (const child of node.items) {
+      if (child && typeof child === 'object') {
+        unflattenNode(child);
+      }
+    }
+  }
+}
+
+/**
+ * Reverse of `unflattenNode` — expands `node.instructions` / `node.changes`
+ * back into flat dotted keys before serializing to YAML, so the on-disk
+ * format matches spec/xtform-format.md / spec/xtdraft-format.md. Mutates in
+ * place and recurses into `items`.
+ */
+function flattenNode(node: Record<string, any>): void {
+  for (const prefix of DOTTED_KEY_PREFIXES) {
+    const value = node[prefix];
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const [key, val] of Object.entries(value)) {
+        node[`${prefix}.${key}`] = val;
+      }
+      delete node[prefix];
+    }
+  }
+
+  if (Array.isArray(node.items)) {
+    for (const child of node.items) {
+      if (child && typeof child === 'object') {
+        flattenNode(child);
+      }
+    }
+  }
+}
+
+/**
  * Parses .xtform document content into structured hierarchical format
  *
  * @param content - Raw .xtform file content (pure YAML, no templates)
@@ -30,6 +105,8 @@ export function parseXtformDocument(content: string): XtformDocument {
       throw new XtformParseError('Invalid xtform: root must have uuid');
     }
 
+    unflattenNode(doc);
+
     return doc as XtformDocument;
   } catch (error) {
     if (error instanceof XtformParseError) {
@@ -48,7 +125,10 @@ export function parseXtformDocument(content: string): XtformDocument {
  * @returns YAML string representation
  */
 export function serializeXtformDocument(doc: XtformDocument): string {
-  return YAML.stringify(doc, {
+  const flattened = JSON.parse(JSON.stringify(doc));
+  flattenNode(flattened);
+
+  return YAML.stringify(flattened, {
     indent: 2,
     lineWidth: 0,
     defaultStringType: 'QUOTE_DOUBLE'
@@ -103,7 +183,7 @@ export function updateNodeValue(doc: XtformDocument, uuid: string, value: any): 
  *
  * @param doc - XtformDocument to update
  * @param uuid - UUID of the node to update
- * @param property - Property name (supports 'instructions.*' notation)
+ * @param property - Property name (supports 'instructions.*' and 'changes.*' notation)
  * @param value - New value
  * @returns Updated XtformDocument
  */
@@ -117,13 +197,19 @@ export function updateNodeProperty(
 
   function findAndUpdate(node: XtformNode | XtformDocument): boolean {
     if (node.uuid === uuid) {
-      // Handle instructions.* properties
+      // Handle instructions.* and changes.* properties
       if (property.startsWith('instructions.')) {
         const key = property.substring('instructions.'.length);
         if (!node.instructions) {
           node.instructions = {};
         }
         node.instructions[key] = value;
+      } else if (property.startsWith('changes.')) {
+        const key = property.substring('changes.'.length);
+        if (!node.changes) {
+          (node as any).changes = {};
+        }
+        (node as any).changes[key] = value;
       } else {
         (node as any)[property] = value;
       }

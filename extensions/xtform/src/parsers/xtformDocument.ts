@@ -15,6 +15,9 @@
  */
 export interface XtformRootChanges {
   kind: string;
+
+  /** Additional generator metadata carried alongside `kind` (e.g. `generated_at`, `user_instructions`, `router`, `summary`) — round-tripped but not interpreted by the Viewer. */
+  [key: string]: unknown;
 }
 
 /**

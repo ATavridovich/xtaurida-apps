@@ -2,6 +2,7 @@
 // This script runs in the webview context and communicates with the extension
 
 import * as YAML from 'yaml';
+import { unflattenNode } from '../src/parsers/yamlParser';
 
 // Type definitions matching backend
 
@@ -1295,6 +1296,7 @@ window.addEventListener('message', event => {
         applyAction = message.applyAction ?? null;
         draftActions = message.draftActions && typeof message.draftActions === 'object' ? message.draftActions : {};
         currentDoc = YAML.parse(message.content) as XtformDocument;
+        unflattenNode(currentDoc);
         renderForm(currentDoc);
 
         // Restore focus and cursor position

@@ -6257,6 +6257,34 @@ ${end.comment}` : end.comment;
     return doc.toJS(Object.assign({ reviver: _reviver }, options));
   }
 
+  // src/parsers/yamlParser.ts
+  var DOTTED_KEY_PREFIXES = ["instructions", "changes"];
+  function unflattenNode(node) {
+    for (const key of Object.keys(node)) {
+      const dotIndex = key.indexOf(".");
+      if (dotIndex === -1) {
+        continue;
+      }
+      const prefix = key.substring(0, dotIndex);
+      if (!DOTTED_KEY_PREFIXES.includes(prefix)) {
+        continue;
+      }
+      const rest = key.substring(dotIndex + 1);
+      if (!node[prefix] || typeof node[prefix] !== "object") {
+        node[prefix] = {};
+      }
+      node[prefix][rest] = node[key];
+      delete node[key];
+    }
+    if (Array.isArray(node.items)) {
+      for (const child of node.items) {
+        if (child && typeof child === "object") {
+          unflattenNode(child);
+        }
+      }
+    }
+  }
+
   // webview-src/index.ts
   var COMPONENT_REGISTRY = [
     // Input Components
@@ -7260,6 +7288,7 @@ ${end.comment}` : end.comment;
           applyAction = message.applyAction ?? null;
           draftActions = message.draftActions && typeof message.draftActions === "object" ? message.draftActions : {};
           currentDoc = parse(message.content);
+          unflattenNode(currentDoc);
           renderForm(currentDoc);
           if (hasFocus) {
             let restoredElement = null;
