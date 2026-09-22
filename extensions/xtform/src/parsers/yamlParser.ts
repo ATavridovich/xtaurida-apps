@@ -315,7 +315,7 @@ export function applyModifiedField(
 
 /**
  * Reverts a `modified` item to its `changes.prev` snapshot and clears
- * `changes` — see spec/xtdraft-format.md ("Modified fields", Cancel). A
+ * `changes` — see spec/xtdraft-format.md ("Modified fields", Reject). A
  * no-op (besides clearing `changes`) if the item has no `changes.prev`.
  * Like `applyModifiedField`, this is a mechanical write owned by the
  * Viewer, not an Agent command.
@@ -429,31 +429,127 @@ const PROMOTABLE_CONTAINER_TYPES = new Set(['Section', 'CollapsibleSection', 'Ta
  */
 export function deleteNode(doc: XtformDocument, uuid: string): XtformDocument {
   const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+  deleteNodeInPlace(newDoc, uuid);
+  bumpRevision(newDoc);
+  return newDoc;
+}
 
-  function findAndDelete(parent: XtformNode | XtformDocument): boolean {
-    if (!parent.items || !Array.isArray(parent.items)) {
-      return false;
-    }
-
-    const index = parent.items.findIndex(child => child.uuid === uuid);
-    if (index !== -1) {
-      const [removed] = parent.items.splice(index, 1);
-      if (PROMOTABLE_CONTAINER_TYPES.has(removed.type) && Array.isArray(removed.items)) {
-        parent.items.splice(index, 0, ...removed.items);
-      }
-      return true;
-    }
-
-    for (const child of parent.items) {
-      if (findAndDelete(child)) {
-        return true;
-      }
-    }
-
+/**
+ * Mutates `root` (an already-cloned, mutable tree) to remove the node with
+ * the given uuid, applying the same container-promotion rule as
+ * `deleteNode`. Shared by `deleteNode` and the added/removed field
+ * resolution below, which may need to delete more than one node — an
+ * "accepted" removal and a paired "rejected" addition, say — within a
+ * single clone.
+ *
+ * @returns Whether a node was found and removed
+ */
+function deleteNodeInPlace(root: XtformNode | XtformDocument, uuid: string): boolean {
+  if (!root.items || !Array.isArray(root.items)) {
     return false;
   }
 
-  findAndDelete(newDoc);
+  const index = root.items.findIndex(child => child.uuid === uuid);
+  if (index !== -1) {
+    const [removed] = root.items.splice(index, 1);
+    if (PROMOTABLE_CONTAINER_TYPES.has(removed.type) && Array.isArray(removed.items)) {
+      root.items.splice(index, 0, ...removed.items);
+    }
+    return true;
+  }
+
+  for (const child of root.items) {
+    if (deleteNodeInPlace(child, uuid)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Strips the `:new` suffix a proposed "added" item's uuid carries while its
+ * `changes.status` is `added` — see spec/xtdraft-format.md ("Added /
+ * Removed"). Unchanged if the uuid has no such suffix.
+ */
+function stripNewSuffix(uuid: string): string {
+  return uuid.endsWith(':new') ? uuid.slice(0, -4) : uuid;
+}
+
+/**
+ * Resolves a single `added` or `removed` item per spec/xtdraft-format.md
+ * ("Added / Removed"): `accept` on `added` clears `changes` and strips
+ * `:new` from its uuid (the item becomes permanent); `accept` on `removed`
+ * deletes it; `reject` on `added` deletes it; `reject` on `removed` clears
+ * `changes` (the item is restored). Mutates `root` in place.
+ */
+function resolveOneAddedRemovedItem(
+  root: XtformDocument,
+  uuid: string,
+  status: 'added' | 'removed',
+  action: 'accept' | 'reject'
+): void {
+  if (status === 'added' && action === 'accept') {
+    const node = findMutableNode(root, uuid) as XtformNode | null;
+    if (node) {
+      delete (node as any).changes;
+      node.uuid = stripNewSuffix(node.uuid);
+    }
+    return;
+  }
+
+  if (status === 'removed' && action === 'reject') {
+    const node = findMutableNode(root, uuid) as XtformNode | null;
+    if (node) {
+      delete (node as any).changes;
+    }
+    return;
+  }
+
+  // 'added' + reject, or 'removed' + accept: the item goes away either way
+  deleteNodeInPlace(root, uuid);
+}
+
+/**
+ * Resolves an `added` or `removed` item — see spec/xtdraft-format.md
+ * ("Added / Removed") — and, per its "Paired items" rule, automatically
+ * applies the same `action` to its paired counterpart if one exists: for an
+ * `added` item `{base-uuid}:new`, that's a `removed` item `{base-uuid}`
+ * (and vice versa). Applying the same action to both resolves a
+ * rename/replace pair consistently — e.g. accepting the new value also
+ * finalizes deletion of the old one; rejecting the new value also restores
+ * the old one.
+ *
+ * @param doc - XtformDocument to update
+ * @param uuid - UUID of the added/removed item the user acted on
+ * @param action - 'accept' or 'reject', from the item's status popup
+ * @returns Updated XtformDocument (unchanged if the item isn't `added`/`removed`)
+ */
+export function resolveAddedRemovedItem(
+  doc: XtformDocument,
+  uuid: string,
+  action: 'accept' | 'reject'
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  const acted = findMutableNode(newDoc, uuid) as XtformNode | null;
+  const actedStatus = acted?.changes?.status;
+  if (!acted || (actedStatus !== 'added' && actedStatus !== 'removed')) {
+    return newDoc;
+  }
+
+  const baseUuid = actedStatus === 'added' ? stripNewSuffix(acted.uuid) : acted.uuid;
+  const pairUuid = actedStatus === 'added' ? baseUuid : `${baseUuid}:new`;
+  const pairStatus: 'added' | 'removed' = actedStatus === 'added' ? 'removed' : 'added';
+
+  const pair = findMutableNode(newDoc, pairUuid) as XtformNode | null;
+  const hasPair = !!pair && pair.uuid !== acted.uuid && pair.changes?.status === pairStatus;
+
+  resolveOneAddedRemovedItem(newDoc, acted.uuid, actedStatus, action);
+  if (hasPair) {
+    resolveOneAddedRemovedItem(newDoc, pairUuid, pairStatus, action);
+  }
+
   bumpRevision(newDoc);
   return newDoc;
 }

@@ -11,6 +11,7 @@ import {
   updateNodeProperty,
   applyModifiedField,
   cancelModifiedField,
+  resolveAddedRemovedItem,
   addNode,
   deleteNode,
   findNode,
@@ -29,23 +30,21 @@ interface FormQuickAction {
 
 /**
  * Draft-related commands declared by the xTaurida Agent extension's own
- * manifest (`xtaurida.formDraftActions` in its package.json). Each is a
- * plain command id — the Viewer renders fixed labels/icons for these (see
- * spec/xtdraft-format.md, "Toolbar" and "Field buttons": "Both buttons are
- * Agent commands — viewer just renders them") and never resolves the draft
- * itself. `fieldAccept`/`fieldReject` are invoked with the item's uuid as
- * their sole argument.
+ * manifest (`xtaurida.formDraftActions` in its package.json) — the
+ * form-level toolbar only (spec/xtdraft-format.md, "Toolbar"): "Both
+ * buttons are Agent commands — viewer just renders them" and never resolves
+ * the draft itself.
  *
- * The modified-field metadata popup's own Apply/Cancel (spec/xtdraft-
- * format.md, "Modified fields") are NOT Agent commands — they're a
- * mechanical write/revert the Viewer performs itself, see
- * `handleApplyModifiedField`/`handleCancelModifiedField` below.
+ * Every component-level action — the modified-field metadata popup's
+ * Apply/Reject (spec/xtdraft-format.md, "Modified fields") and the added/
+ * removed status popup's Accept/Reject ("Added / Removed") — is NOT an
+ * Agent command; it's a mechanical write the Viewer performs itself, see
+ * `handleApplyModifiedField`/`handleCancelModifiedField` and
+ * `handleResolveAddedRemovedItem` below.
  */
 interface FormDraftActions {
   applyAll?: string;
   cancel?: string;
-  fieldAccept?: string;
-  fieldReject?: string;
 }
 
 /**
@@ -433,11 +432,21 @@ class XtformEditor extends Disposable {
         break;
 
       case 'cancelModifiedField':
-        // Metadata popup Cancel — revert to `changes.prev` and clear
+        // Metadata popup Reject — revert to `changes.prev` and clear
         // `changes` (spec/xtdraft-format.md, "Modified fields"). Not an
         // Agent command — the Viewer does this itself.
         this.editQueue = this.editQueue.then(async () => {
           await this.handleCancelModifiedField(message.uuid);
+        });
+        await this.editQueue;
+        break;
+
+      case 'resolveAddedRemovedItem':
+        // Added/Removed status popup Accept/Reject, including the "Paired
+        // items" auto-resolution (spec/xtdraft-format.md, "Added /
+        // Removed"). Not an Agent command — the Viewer does this itself.
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleResolveAddedRemovedItem(message.uuid, message.action);
         });
         await this.editQueue;
         break;
@@ -572,7 +581,7 @@ class XtformEditor extends Disposable {
   }
 
   /**
-   * Handles the modified-field metadata popup's Cancel — reverts that item
+   * Handles the modified-field metadata popup's Reject — reverts that item
    * to its `changes.prev` snapshot and clears `changes`.
    */
   private async handleCancelModifiedField(uuid: string): Promise<void> {
@@ -584,6 +593,23 @@ class XtformEditor extends Disposable {
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to cancel changes: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles the added/removed status popup's Accept/Reject, including
+   * auto-resolving a paired item (see `resolveAddedRemovedItem`).
+   */
+  private async handleResolveAddedRemovedItem(uuid: string, action: 'accept' | 'reject'): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = resolveAddedRemovedItem(doc, uuid, action);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to ${action} change: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

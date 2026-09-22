@@ -11,7 +11,8 @@ import {
   deleteNode,
   addNode,
   applyModifiedField,
-  cancelModifiedField
+  cancelModifiedField,
+  resolveAddedRemovedItem
 } from '../parsers/yamlParser';
 import { XtformDocument } from '../parsers/xtformDocument';
 
@@ -342,6 +343,107 @@ items:
       const updated = addNode(doc, null, { type: 'TextInput', uuid: 'f-004', label: 'New' });
 
       assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+  });
+
+  suite('resolveAddedRemovedItem (spec/xtdraft-format.md "Added / Removed")', () => {
+    test('accept on an unpaired added item clears changes and strips :new', () => {
+      const doc = makeDocWithChanges();
+
+      const updated = resolveAddedRemovedItem(doc, 'f-001', 'accept');
+      const item = updated.items!.find(i => i.label === 'Concurrent Users')!;
+
+      assert.strictEqual(item.uuid, 'f-001');
+      assert.strictEqual(item.changes, undefined);
+    });
+
+    test('reject on an unpaired added item deletes it', () => {
+      const doc = makeDocWithChanges();
+
+      const updated = resolveAddedRemovedItem(doc, 'f-001', 'reject');
+
+      assert.strictEqual(updated.items!.find(i => i.uuid === 'f-001'), undefined);
+    });
+
+    test('accept on an unpaired removed item deletes it', () => {
+      const doc = makeDocWithChanges();
+
+      const updated = resolveAddedRemovedItem(doc, 'f-002', 'accept');
+
+      assert.strictEqual(updated.items!.find(i => i.uuid === 'f-002'), undefined);
+    });
+
+    test('reject on an unpaired removed item clears changes and restores it', () => {
+      const doc = makeDocWithChanges();
+
+      const updated = resolveAddedRemovedItem(doc, 'f-002', 'reject');
+      const item = updated.items!.find(i => i.uuid === 'f-002')!;
+
+      assert.strictEqual(item.changes, undefined);
+    });
+
+    test('is a no-op for an item that is not added/removed', () => {
+      const doc = makeDocWithChanges();
+
+      const updated = resolveAddedRemovedItem(doc, 'f-003', 'accept');
+      const item = updated.items!.find(i => i.uuid === 'f-003')!;
+
+      assert.strictEqual(item.changes, undefined); // was already untouched
+      assert.strictEqual(updated.items!.length, 3);
+    });
+
+    function makePairedDoc(): XtformDocument {
+      return parseXtformDocument(`
+type: Form
+uuid: "form-001"
+items:
+  - type: TextInput
+    uuid: "p-001"
+    label: "Page Name"
+    value: null
+    changes.status: removed
+  - type: TextInput
+    uuid: "p-001:new"
+    label: "Page Name"
+    value: ""
+    changes.status: added
+`);
+    }
+
+    test('accept on the added half of a pair also deletes the paired removed item', () => {
+      const doc = makePairedDoc();
+
+      const updated = resolveAddedRemovedItem(doc, 'p-001:new', 'accept');
+
+      assert.deepStrictEqual(updated.items!.map(i => i.uuid), ['p-001']);
+      assert.strictEqual(updated.items![0].changes, undefined);
+    });
+
+    test('reject on the added half of a pair also restores the paired removed item', () => {
+      const doc = makePairedDoc();
+
+      const updated = resolveAddedRemovedItem(doc, 'p-001:new', 'reject');
+
+      assert.deepStrictEqual(updated.items!.map(i => i.uuid), ['p-001']);
+      assert.strictEqual(updated.items![0].changes, undefined);
+    });
+
+    test('accept on the removed half of a pair also finalizes the paired added item', () => {
+      const doc = makePairedDoc();
+
+      const updated = resolveAddedRemovedItem(doc, 'p-001', 'accept');
+
+      assert.deepStrictEqual(updated.items!.map(i => i.uuid), ['p-001']);
+      assert.strictEqual(updated.items![0].changes, undefined);
+    });
+
+    test('reject on the removed half of a pair also discards the paired added item', () => {
+      const doc = makePairedDoc();
+
+      const updated = resolveAddedRemovedItem(doc, 'p-001', 'reject');
+
+      assert.deepStrictEqual(updated.items!.map(i => i.uuid), ['p-001']);
+      assert.strictEqual(updated.items![0].changes, undefined);
     });
   });
 });

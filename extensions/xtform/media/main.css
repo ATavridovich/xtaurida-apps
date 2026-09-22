@@ -879,49 +879,11 @@ body {
   padding-left: 9px;
 }
 
-/* Draft field buttons: Accept (✓) / Reject (✗), shown on hover */
-.xtform-draft-buttons {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  z-index: 10;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.xtform-component:hover .xtform-draft-buttons {
-  opacity: 1;
-}
-
-.xtform-draft-accept,
-.xtform-draft-reject {
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 3px;
-  background: var(--vscode-editorWidget-background);
-  color: var(--vscode-editor-foreground);
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.xtform-draft-accept:hover {
-  background: var(--vscode-gitDecoration-addedResourceForeground, #3fb950);
-  color: #fff;
-}
-
-.xtform-draft-reject:hover {
-  background: var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
-  color: #fff;
-}
-
-/* Inline "M" badge, placed right after a modified item's title — see
-   spec/xtdraft-format.md, "Modified fields". Click opens the metadata
-   popup below (`openMetadataPopup` in webview-src/index.ts). */
-.xtform-modified-badge {
+/* Inline status badge ("A" / "R" / "M"), placed right after an added/
+   removed/modified item's title — see spec/xtdraft-format.md ("Added /
+   Removed", "Modified fields"). Click opens that item's popup
+   (`openAddedRemovedPopup`/`openMetadataPopup` in webview-src/index.ts). */
+.xtform-status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -931,7 +893,6 @@ body {
   padding: 0 4px;
   border: none;
   border-radius: 3px;
-  background: var(--vscode-gitDecoration-modifiedResourceForeground, #d29922);
   color: #1a1a1a;
   font-size: 10px;
   font-weight: 600;
@@ -940,8 +901,21 @@ body {
   cursor: pointer;
 }
 
-.xtform-modified-badge:hover {
+.xtform-status-badge:hover {
   opacity: 0.85;
+}
+
+.xtform-status-badge-added {
+  background: var(--vscode-gitDecoration-addedResourceForeground, #3fb950);
+}
+
+.xtform-status-badge-removed {
+  background: var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
+  color: #fff;
+}
+
+.xtform-status-badge-modified {
+  background: var(--vscode-gitDecoration-modifiedResourceForeground, #d29922);
 }
 
 /* Metadata popup — click-to-open (not hover), anchored to and positioned
@@ -1052,7 +1026,7 @@ body {
 }
 
 .xtform-metadata-apply,
-.xtform-metadata-cancel {
+.xtform-metadata-reject {
   padding: 4px 12px;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 3px;
@@ -1071,11 +1045,65 @@ body {
   background: var(--vscode-button-hoverBackground);
 }
 
-.xtform-metadata-cancel {
+.xtform-metadata-reject {
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
 }
 
-.xtform-metadata-cancel:hover {
+.xtform-metadata-reject:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Added/removed status popup — click-to-open, anchored to and positioned
+   just under its "A"/"R" badge (see `.xtform-metadata-popup` above for the
+   same mechanics). Simpler than the metadata popup: just a title and
+   Accept/Reject — see spec/xtdraft-format.md ("Added / Removed"). */
+.xtform-status-popup {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+  padding: 10px;
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+}
+
+.xtform-status-popup-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.xtform-status-popup-accept,
+.xtform-status-popup-reject {
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.xtform-status-popup-accept {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: transparent;
+}
+
+.xtform-status-popup-accept:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.xtform-status-popup-reject {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.xtform-status-popup-reject:hover {
   background: var(--vscode-button-secondaryHoverBackground);
 }
