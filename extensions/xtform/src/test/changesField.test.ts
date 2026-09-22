@@ -10,9 +10,11 @@ import {
   updateNodeValue,
   deleteNode,
   addNode,
-  applyModifiedField,
+  acceptModifiedField,
   cancelModifiedField,
-  resolveAddedRemovedItem
+  resolveAddedRemovedItem,
+  acceptAllChanges,
+  rejectAllChanges
 } from '../parsers/yamlParser';
 import { XtformDocument } from '../parsers/xtformDocument';
 
@@ -21,7 +23,7 @@ suite('changes field (spec/xtdraft-format.md)', () => {
     return parseXtformDocument(`
 type: Form
 uuid: "form-001"
-title: "Test Form"
+label: "Test Form"
 changes:
   kind: proposal
 items:
@@ -90,7 +92,7 @@ items:
       return parseXtformDocument(`
 type: Form
 uuid: "form-001"
-title: "Test Form"
+label: "Test Form"
 changes.kind: refine
 changes.generated_at: "2026-09-21T16:44:07.976Z"
 changes.summary:
@@ -221,10 +223,10 @@ items:
       assert.ok(yaml.includes('instructions.on_change'));
     });
 
-    test('applyModifiedField writes the given values and clears changes', () => {
+    test('acceptModifiedField writes the given values and clears changes', () => {
       const doc = makeDocWithModifiedItem();
 
-      const updated = applyModifiedField(doc, 'f-001', {
+      const updated = acceptModifiedField(doc, 'f-001', {
         label: 'Model Name',
         description: 'Django model class name, PascalCase, singular noun',
         'instructions.on_change': 'Rename model class in models.py and all related imports'
@@ -240,12 +242,12 @@ items:
       assert.strictEqual(item.changes, undefined);
     });
 
-    test('applyModifiedField can write a mix of prev and current values per field', () => {
+    test('acceptModifiedField can write a mix of prev and current values per field', () => {
       const doc = makeDocWithModifiedItem();
 
       // Simulates the user toggling only `label` back to its prev value in
       // the metadata popup, leaving description/instructions at current.
-      const updated = applyModifiedField(doc, 'f-001', {
+      const updated = acceptModifiedField(doc, 'f-001', {
         label: 'Name',
         description: 'Django model class name, PascalCase, singular noun',
         'instructions.on_change': 'Rename model class in models.py and all related imports'
@@ -288,7 +290,7 @@ items:
       assert.strictEqual(item.changes, undefined);
     });
 
-    test('applyModifiedField/cancelModifiedField leave sibling items untouched', () => {
+    test('acceptModifiedField/cancelModifiedField leave sibling items untouched', () => {
       const doc = parseXtformDocument(`
 type: Form
 uuid: "form-001"
@@ -306,7 +308,7 @@ items:
     changes.status: added
 `);
 
-      const updated = applyModifiedField(doc, 'f-001', { label: 'Model Name' });
+      const updated = acceptModifiedField(doc, 'f-001', { label: 'Model Name' });
       const sibling = updated.items!.find(i => i.uuid === 'f-002')!;
 
       assert.deepStrictEqual(sibling.changes, { status: 'added' });
@@ -444,6 +446,249 @@ items:
 
       assert.deepStrictEqual(updated.items!.map(i => i.uuid), ['p-001']);
       assert.strictEqual(updated.items![0].changes, undefined);
+    });
+  });
+
+  suite('acceptAllChanges / rejectAllChanges (spec/xtdraft-format.md "Accept All" / "Reject All")', () => {
+    function makeDocWithMixedChanges(): XtformDocument {
+      return parseXtformDocument(`
+type: Form
+uuid: "form-001"
+changes:
+  kind: proposal
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Concurrent Users"
+    value: "50"
+    changes:
+      status: added
+  - type: TextInput
+    uuid: "f-002"
+    label: "Old Description"
+    value: "..."
+    changes:
+      status: removed
+  - type: TextInput
+    uuid: "f-003"
+    label: "Model Name"
+    value: "BlogPost"
+    changes:
+      status: modified
+      prev:
+        label: "Name"
+  - type: Section
+    uuid: "s-001"
+    label: "Nested"
+    items:
+      - type: TextInput
+        uuid: "f-004"
+        label: "Nested Added"
+        changes:
+          status: added
+  - type: TextInput
+    uuid: "f-005"
+    label: "Untouched"
+    value: "same"
+`);
+    }
+
+    test('acceptAllChanges resolves every pending item at once and strips the root changes field', () => {
+      const doc = makeDocWithMixedChanges();
+
+      const updated = acceptAllChanges(doc);
+
+      const added = updated.items!.find(i => i.uuid === 'f-001')!;
+      const modified = updated.items!.find(i => i.uuid === 'f-003')!;
+      const untouched = updated.items!.find(i => i.uuid === 'f-005')!;
+      const nestedAdded = (updated.items!.find(i => i.uuid === 's-001')!.items!)[0];
+
+      assert.strictEqual(added.changes, undefined);
+      assert.strictEqual(updated.items!.find(i => i.uuid === 'f-002'), undefined); // removed item deleted
+      assert.strictEqual(modified.changes, undefined);
+      assert.strictEqual(modified.value, 'BlogPost'); // already-current value kept as-is
+      assert.strictEqual(nestedAdded.changes, undefined);
+      assert.strictEqual(nestedAdded.uuid, 'f-004');
+      assert.strictEqual(untouched.changes, undefined);
+      assert.strictEqual(updated.changes, undefined);
+    });
+
+    test('acceptAllChanges strips :new from an added item\'s uuid', () => {
+      const doc = parseXtformDocument(`
+type: Form
+uuid: "form-001"
+changes:
+  kind: proposal
+items:
+  - type: TextInput
+    uuid: "f-001:new"
+    label: "New Field"
+    changes.status: added
+`);
+
+      const updated = acceptAllChanges(doc);
+
+      assert.strictEqual(updated.items![0].uuid, 'f-001');
+      assert.strictEqual(updated.items![0].changes, undefined);
+    });
+
+    test('rejectAllChanges resolves every pending item at once and strips the root changes field', () => {
+      const doc = makeDocWithMixedChanges();
+
+      const updated = rejectAllChanges(doc);
+
+      const removed = updated.items!.find(i => i.uuid === 'f-002')!;
+      const modified = updated.items!.find(i => i.uuid === 'f-003')!;
+      const untouched = updated.items!.find(i => i.uuid === 'f-005')!;
+
+      assert.strictEqual(updated.items!.find(i => i.uuid === 'f-001'), undefined); // added item deleted
+      assert.strictEqual(removed.changes, undefined);
+      assert.strictEqual(modified.label, 'Name'); // restored from changes.prev
+      assert.strictEqual(modified.changes, undefined);
+      assert.strictEqual(updated.items!.find(i => i.uuid === 's-001')!.items!.length, 0); // nested added item deleted
+      assert.strictEqual(untouched.changes, undefined);
+      assert.strictEqual(updated.changes, undefined);
+    });
+  });
+
+  suite('root document as a component (spec/xtdraft-format.md "The form itself is a component")', () => {
+    function makeDocWithModifiedRoot(): XtformDocument {
+      return parseXtformDocument(`
+type: Form
+uuid: "form-001"
+label: "Model Name"
+description: "Core project details, branding information"
+changes:
+  kind: proposal
+  status: modified
+  prev:
+    label: "Name"
+    description: "Core project details"
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Untouched"
+`);
+    }
+
+    test('acceptModifiedField on the root uuid writes the resolved values and clears status/prev but keeps kind', () => {
+      const doc = makeDocWithModifiedRoot();
+
+      const updated = acceptModifiedField(doc, 'form-001', {
+        label: 'Model Name',
+        description: 'Core project details, branding information'
+      });
+
+      assert.strictEqual(updated.label, 'Model Name');
+      assert.strictEqual(updated.description, 'Core project details, branding information');
+      assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+
+    test('cancelModifiedField on the root uuid restores changes.prev and clears status/prev but keeps kind', () => {
+      const doc = makeDocWithModifiedRoot();
+
+      const updated = cancelModifiedField(doc, 'form-001');
+
+      assert.strictEqual(updated.label, 'Name');
+      assert.strictEqual(updated.description, 'Core project details');
+      assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+
+    function makeDocWithAddedRemovedRoot(status: 'added' | 'removed'): XtformDocument {
+      return parseXtformDocument(`
+type: Form
+uuid: "form-001"
+label: "New Form"
+changes:
+  kind: proposal
+  status: ${status}
+items: []
+`);
+    }
+
+    test('resolveAddedRemovedItem accept on an added root clears status but keeps kind (the document can\'t delete itself)', () => {
+      const doc = makeDocWithAddedRemovedRoot('added');
+
+      const updated = resolveAddedRemovedItem(doc, 'form-001', 'accept');
+
+      assert.strictEqual(updated.uuid, 'form-001');
+      assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+
+    test('resolveAddedRemovedItem reject on an added root clears status but keeps kind (the document can\'t delete itself)', () => {
+      const doc = makeDocWithAddedRemovedRoot('added');
+
+      const updated = resolveAddedRemovedItem(doc, 'form-001', 'reject');
+
+      assert.strictEqual(updated.uuid, 'form-001');
+      assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+
+    test('resolveAddedRemovedItem reject on a removed root clears status and restores it, keeping kind', () => {
+      const doc = makeDocWithAddedRemovedRoot('removed');
+
+      const updated = resolveAddedRemovedItem(doc, 'form-001', 'reject');
+
+      assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+
+    test('resolveAddedRemovedItem accept on a removed root clears status but keeps kind (the document can\'t delete itself)', () => {
+      const doc = makeDocWithAddedRemovedRoot('removed');
+
+      const updated = resolveAddedRemovedItem(doc, 'form-001', 'accept');
+
+      assert.strictEqual(updated.uuid, 'form-001');
+      assert.deepStrictEqual(updated.changes, { kind: 'proposal' });
+    });
+
+    test('acceptAllChanges resolves a modified root alongside items and strips the whole root changes field', () => {
+      const doc = parseXtformDocument(`
+type: Form
+uuid: "form-001"
+label: "Model Name"
+changes:
+  kind: proposal
+  status: modified
+  prev:
+    label: "Name"
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Added Field"
+    changes:
+      status: added
+`);
+
+      const updated = acceptAllChanges(doc);
+
+      assert.strictEqual(updated.label, 'Model Name'); // already-current value kept as-is
+      assert.strictEqual(updated.items![0].changes, undefined);
+      assert.strictEqual(updated.changes, undefined); // kind stripped too — everything is resolved
+    });
+
+    test('rejectAllChanges restores a modified root\'s prev alongside items and strips the whole root changes field', () => {
+      const doc = parseXtformDocument(`
+type: Form
+uuid: "form-001"
+label: "Model Name"
+changes:
+  kind: proposal
+  status: modified
+  prev:
+    label: "Name"
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Added Field"
+    changes:
+      status: added
+`);
+
+      const updated = rejectAllChanges(doc);
+
+      assert.strictEqual(updated.label, 'Name'); // restored from root changes.prev
+      assert.strictEqual(updated.items!.find(i => i.uuid === 'f-001'), undefined); // added item deleted
+      assert.strictEqual(updated.changes, undefined);
     });
   });
 });

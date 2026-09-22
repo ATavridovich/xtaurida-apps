@@ -12,7 +12,7 @@ suite('deleteNode (spec/xtdraft-format.md, "Editing")', () => {
     return parseXtformDocument(`
 type: Form
 uuid: "form-001"
-title: "Test Form"
+label: "Test Form"
 items:
   - type: Section
     uuid: "s-001"

@@ -156,7 +156,7 @@ body {
   cursor: not-allowed;
 }
 
-/* Draft toolbar: "{title} (draft)" + Apply all / Cancel (spec/xtdraft-format.md) */
+/* Draft toolbar: "{title} (draft)" + Accept All / Reject All (spec/xtdraft-format.md) */
 .xtform-draft-badge {
   font-size: 0.55em;
   font-weight: 500;
@@ -171,8 +171,8 @@ body {
   gap: 8px;
 }
 
-.xtform-draft-apply-all,
-.xtform-draft-cancel {
+.xtform-draft-accept-all,
+.xtform-draft-reject-all {
   padding: 4px 14px;
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 4px;
@@ -182,21 +182,21 @@ body {
   cursor: pointer;
 }
 
-.xtform-draft-apply-all {
+.xtform-draft-accept-all {
   background-color: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
 }
 
-.xtform-draft-apply-all:hover {
+.xtform-draft-accept-all:hover {
   background-color: var(--vscode-button-hoverBackground);
 }
 
-.xtform-draft-cancel {
+.xtform-draft-reject-all {
   background-color: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
 }
 
-.xtform-draft-cancel:hover {
+.xtform-draft-reject-all:hover {
   background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
@@ -1031,7 +1031,7 @@ body {
   border-top: 1px solid var(--vscode-panel-border);
 }
 
-.xtform-metadata-apply,
+.xtform-metadata-accept,
 .xtform-metadata-reject {
   padding: 4px 12px;
   border: 1px solid var(--vscode-panel-border);
@@ -1041,13 +1041,13 @@ body {
   cursor: pointer;
 }
 
-.xtform-metadata-apply {
+.xtform-metadata-accept {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border-color: transparent;
 }
 
-.xtform-metadata-apply:hover {
+.xtform-metadata-accept:hover {
   background: var(--vscode-button-hoverBackground);
 }
 

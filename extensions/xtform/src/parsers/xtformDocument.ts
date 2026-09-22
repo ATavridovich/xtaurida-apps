@@ -12,9 +12,20 @@
  * see spec/xtdraft-format.md ("Detection"). Any `kind` value shows the
  * draft toolbar; the value itself is meaningful to whichever Agent proposed
  * the changes, not to the Viewer.
+ *
+ * The root is a component like any other (see `XtformDocument`), so it can
+ * additionally carry its own `status`/`prev` — e.g. `modified` if the
+ * form's own label/description/instructions changed as part of the
+ * proposal — rendered and resolved exactly like an item's `XtformItemChanges`.
  */
 export interface XtformRootChanges {
   kind: string;
+
+  /** Same meaning as `XtformItemChanges.status`, for the root document itself. */
+  status?: 'added' | 'removed' | 'modified';
+
+  /** Same meaning as `XtformItemChanges.prev`, for the root document itself. */
+  prev?: XtformItemChangesPrev;
 
   /** Additional generator metadata carried alongside `kind` (e.g. `generated_at`, `user_instructions`, `router`, `summary`) — round-tripped but not interpreted by the Viewer. */
   [key: string]: unknown;
@@ -118,7 +129,7 @@ export interface XtformDocument {
   uuid: string;
 
   /** Display name - filename used if absent */
-  title?: string;
+  label?: string;
 
   /** Short summary of the form's purpose */
   description?: string;
@@ -144,7 +155,7 @@ export interface XtformDocument {
   /** AI behaviour instructions - see Instructions section */
   instructions?: Record<string, string>;
 
-  /** Presence of `changes.kind` signals a pending draft — see `XtformRootChanges` */
+  /** Presence of `changes.kind` signals a pending draft; `changes.status`/`changes.prev` mark the root's own change like any component's — see `XtformRootChanges` */
   changes?: XtformRootChanges;
 
   /** Child elements - sections and fields */

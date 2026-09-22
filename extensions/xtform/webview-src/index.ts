@@ -8,9 +8,14 @@ import { unflattenNode } from '../src/parsers/yamlParser';
 
 // Presence of `changes.kind` on the root document signals a pending draft —
 // see spec/xtdraft-format.md ("Detection"). The value itself is meaningful
-// to whichever Agent proposed the changes, not to the Viewer.
+// to whichever Agent proposed the changes, not to the Viewer. The root is a
+// component like any other, so it can additionally carry its own
+// `status`/`prev`, rendered and resolved exactly like an item's
+// `XtformItemChanges`.
 interface XtformRootChanges {
   kind: string;
+  status?: 'added' | 'removed' | 'modified';
+  prev?: XtformItemChangesPrev;
 }
 
 // Snapshot of a node's previous field values, carried on `changes.prev` for
@@ -51,7 +56,7 @@ interface XtformNode {
 interface XtformDocument {
   type: 'Form';
   uuid: string;
-  title?: string;
+  label?: string;
   description?: string;
   prompt?: string;
   elaborate_options?: string[];
@@ -295,27 +300,6 @@ let openQuickMenu: HTMLElement | null = null;
 
 let applyAction: QuickAction | null = null;
 
-// === DRAFT ACTIONS ===
-// Form-level draft toolbar (Apply all / Cancel) commands — see
-// spec/xtdraft-format.md ("Toolbar"). Declared once by whichever extension
-// owns them (see 'update' message handler); "Both buttons are Agent
-// commands — viewer just renders them", so these are plain command ids with
-// fixed labels, dispatched the same way as `runCommand` above. Whether the
-// draft toolbar actually renders is decided purely from the document's own
-// `changes.kind` field in renderForm(), not here.
-//
-// Every component-level action — the modified-field metadata popup's
-// Apply/Reject and the added/removed status popup's Accept/Reject — is NOT
-// an Agent command; see `sendApplyModifiedField`/`sendCancelModifiedField`/
-// `sendResolveAddedRemovedItem`.
-
-interface DraftActions {
-  applyAll?: string;
-  cancel?: string;
-}
-
-let draftActions: DraftActions = {};
-
 function closeQuickMenu(): void {
   if (openQuickMenu) {
     openQuickMenu.remove();
@@ -368,7 +352,11 @@ function escapeHtml(text: string): string {
 // status badge (`draftStatusBadgeHtml`) that opens the item's Accept/
 // Reject (or Apply/Reject) popup.
 
-function draftStatusClass(node: XtformNode): string {
+// The root document is a component like any other and can carry the same
+// `changes.status` (see `XtformRootChanges`), so every function below that
+// renders or resolves it accepts `XtformNode | XtformDocument`.
+
+function draftStatusClass(node: XtformNode | XtformDocument): string {
   switch (node.changes?.status) {
     case 'added': return ' xtform-draft-added';
     case 'removed': return ' xtform-draft-removed';
@@ -388,11 +376,11 @@ function draftStatusClass(node: XtformNode): string {
 // for an `added`/`removed` item — see spec/xtdraft-format.md ("Added /
 // Removed"). Both are built fresh each time and appended to `document.body`
 // (not pre-rendered as part of the form: the metadata popup's per-field
-// selection state is local and resets every time it's opened). Unlike the
-// form-level "Apply all"/"Cancel" toolbar (an Agent command), every
-// component-level Apply/Accept/Reject here is a mechanical write/revert
-// this extension performs itself — see `sendApplyModifiedField`/
-// `sendCancelModifiedField`/`sendResolveAddedRemovedItem`.
+// selection state is local and resets every time it's opened). Like the
+// form-level "Accept All"/"Reject All" toolbar, every component-level
+// Accept/Reject here is a mechanical write/revert this extension performs
+// itself — see `sendAcceptModifiedField`/`sendCancelModifiedField`/
+// `sendResolveAddedRemovedItem`/`sendAcceptAllChanges`/`sendRejectAllChanges`.
 
 const MODIFIED_DIFF_FIELD_ORDER = ['label', 'description', 'options', 'width', 'align'] as const;
 
@@ -411,21 +399,22 @@ function formatDiffValue(value: unknown): string {
 
 // Every field with a previous value in `changes.prev` — the set the
 // metadata popup shows, one toggle row each.
-function getModifiedEntries(node: XtformNode): ModifiedEntry[] {
+function getModifiedEntries(node: XtformNode | XtformDocument): ModifiedEntry[] {
   const prev = node.changes?.prev;
   if (!prev) {
     return [];
   }
 
   const entries: ModifiedEntry[] = [];
+  const nodeFields = node as unknown as Record<string, unknown>;
 
   if ('value' in prev) {
-    entries.push({ key: 'value', prevValue: prev.value, currValue: node.value });
+    entries.push({ key: 'value', prevValue: prev.value, currValue: nodeFields.value });
   }
 
   for (const key of MODIFIED_DIFF_FIELD_ORDER) {
     if (key in prev) {
-      entries.push({ key, prevValue: prev[key], currValue: (node as Record<string, unknown>)[key] });
+      entries.push({ key, prevValue: prev[key], currValue: nodeFields[key] });
     }
   }
 
@@ -440,14 +429,14 @@ function getModifiedEntries(node: XtformNode): ModifiedEntry[] {
 
 // Inline status badge ("A" / "R" / "M") — see `setupStatusBadges` for what
 // clicking it does.
-function draftStatusBadgeHtml(node: XtformNode): string {
+function draftStatusBadgeHtml(node: XtformNode | XtformDocument): string {
   const status = node.changes?.status;
   if (!status) {
     return '';
   }
 
   const letter = status === 'added' ? 'A' : status === 'removed' ? 'R' : 'M';
-  const title = status === 'added' ? 'Added' : status === 'removed' ? 'Removed' : 'Show changes';
+  const title = status === 'added' ? 'Added' : status === 'removed' ? 'Removed' : 'Modified';
 
   return ` <button type="button" class="xtform-status-badge xtform-status-badge-${status}" data-uuid="${node.uuid}" title="${title}">${letter}</button>`;
 }
@@ -503,7 +492,7 @@ function metadataRowContentHtml(entry: ModifiedEntry, selected: 'prev' | 'curr')
 // each field is currently toggled to) lives only in this closure and is
 // discarded when the popup closes, per spec/xtdraft-format.md ("Modified
 // fields": "Click selections reset on next open").
-function openMetadataPopup(node: XtformNode, anchor: HTMLElement): void {
+function openMetadataPopup(node: XtformNode | XtformDocument, anchor: HTMLElement): void {
   closeFieldPopup();
 
   const entries = getModifiedEntries(node);
@@ -520,7 +509,7 @@ function openMetadataPopup(node: XtformNode, anchor: HTMLElement): void {
   popup.className = 'xtform-metadata-popup';
   popup.addEventListener('click', (e) => e.stopPropagation());
 
-  const title = node.label || node.type;
+  const title = node.label || (node.type === 'Form' ? 'Untitled Form' : node.type);
   popup.innerHTML = `
     <div class="xtform-metadata-header">
       <span class="xtform-metadata-title">Changes — "${escapeHtml(title)}"</span>
@@ -530,7 +519,7 @@ function openMetadataPopup(node: XtformNode, anchor: HTMLElement): void {
       ${entries.map(() => '<div class="xtform-metadata-row"></div>').join('')}
     </div>
     <div class="xtform-metadata-footer">
-      <button type="button" class="xtform-metadata-apply">Apply</button>
+      <button type="button" class="xtform-metadata-accept">Accept</button>
       <button type="button" class="xtform-metadata-reject">Reject</button>
     </div>
   `;
@@ -547,12 +536,12 @@ function openMetadataPopup(node: XtformNode, anchor: HTMLElement): void {
 
   popup.querySelector('.xtform-metadata-close')?.addEventListener('click', () => closeFieldPopup());
 
-  popup.querySelector('.xtform-metadata-apply')?.addEventListener('click', () => {
+  popup.querySelector('.xtform-metadata-accept')?.addEventListener('click', () => {
     const values: Record<string, unknown> = {};
     for (const entry of entries) {
       values[entry.key] = selections[entry.key] === 'prev' ? entry.prevValue : entry.currValue;
     }
-    sendApplyModifiedField(node.uuid, values);
+    sendAcceptModifiedField(node.uuid, values);
     closeFieldPopup();
   });
 
@@ -571,7 +560,7 @@ function openMetadataPopup(node: XtformNode, anchor: HTMLElement): void {
 // Removed"). Its Accept/Reject send the item's uuid and, per that section's
 // "Paired items" rule, the extension itself resolves a paired counterpart
 // (if any) automatically — this popup doesn't need to know about pairing.
-function openAddedRemovedPopup(node: XtformNode, anchor: HTMLElement): void {
+function openAddedRemovedPopup(node: XtformNode | XtformDocument, anchor: HTMLElement): void {
   closeFieldPopup();
 
   const status = node.changes?.status;
@@ -620,15 +609,15 @@ function setupStatusBadges(): void {
       e.stopPropagation();
       const uuid = badge.getAttribute('data-uuid');
       const node = uuid && currentDoc ? findNode(currentDoc, uuid) : null;
-      if (!node || node.type === 'Form') {
+      if (!node) {
         return;
       }
 
-      const status = (node as XtformNode).changes?.status;
+      const status = node.changes?.status;
       if (status === 'modified') {
-        openMetadataPopup(node as XtformNode, badge);
+        openMetadataPopup(node, badge);
       } else if (status === 'added' || status === 'removed') {
-        openAddedRemovedPopup(node as XtformNode, badge);
+        openAddedRemovedPopup(node, badge);
       }
     });
   });
@@ -822,6 +811,7 @@ function renderSection(node: XtformNode): string {
   return `
     <div class="xtform-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}${draftStatusBadgeHtml(node)}</h2>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -837,6 +827,7 @@ function renderCollapsibleSection(node: XtformNode): string {
   return `
     <details class="xtform-collapsible-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}" open>
       <summary>${node.label ? escapeHtml(node.label) : 'Collapsible Section'}${draftStatusBadgeHtml(node)}</summary>
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -852,6 +843,7 @@ function renderTab(node: XtformNode): string {
   return `
     <div class="xtform-tab xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : 'Tab'}${draftStatusBadgeHtml(node)}</div>
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <div class="xtform-tab-content">
         ${childrenHtml}
       </div>
@@ -951,8 +943,19 @@ function renderForm(doc: XtformDocument): void {
   if (!formPreview) return;
 
   try {
-    // Render form header (clickable to edit form properties)
-    const quickMenuButton = (quickActions.length > 0 && !doc.disable_quick_actions)
+    // Draft toolbar: "{title} (pending changes — {N} remaining)" + Accept
+    // All / Reject All (spec/xtdraft-format.md, "Toolbar"). Shown when any
+    // item, at any depth, carries `changes.status`; hidden once none
+    // remain. Both buttons are mechanical operations this extension
+    // performs itself — see `sendAcceptAllChanges`/`sendRejectAllChanges`.
+    const pendingChangeCount = countPendingChanges(doc);
+    const hasPendingChanges = pendingChangeCount > 0;
+
+    // Render form header (clickable to edit form properties). The
+    // quick-actions menu is hidden while a draft is pending — those
+    // Agent commands act on the form's applied state, not a proposal
+    // that hasn't been accepted or rejected yet.
+    const quickMenuButton = (quickActions.length > 0 && !doc.disable_quick_actions && !hasPendingChanges)
       ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">⋮</button>`
       : '';
 
@@ -963,25 +966,23 @@ function renderForm(doc: XtformDocument): void {
       ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction!.command)}"${applyEnabled ? '' : ' disabled'}>${escapeHtml(applyAction!.title)}</button>`
       : '';
 
-    // Draft toolbar: "{title} (pending changes)" + Apply all / Cancel
-    // (spec/xtdraft-format.md). Shown only when `changes.kind` is present
-    // in root fields; each button only if its command is declared.
-    const hasPendingChanges = !!doc.changes?.kind;
-    const draftBadge = hasPendingChanges ? '<span class="xtform-draft-badge">(pending changes)</span>' : '';
-    const applyAllBtn = hasPendingChanges && draftActions.applyAll
-      ? `<button class="xtform-draft-apply-all">Apply all</button>`
+    const draftBadge = hasPendingChanges
+      ? `<span class="xtform-draft-badge">(pending changes — ${pendingChangeCount} remaining)</span>`
       : '';
-    const cancelBtn = hasPendingChanges && draftActions.cancel
-      ? `<button class="xtform-draft-cancel">Cancel</button>`
-      : '';
-    const draftToolbarHtml = (applyAllBtn || cancelBtn)
-      ? `<div class="xtform-draft-actions">${applyAllBtn}${cancelBtn}</div>`
+    const draftToolbarHtml = hasPendingChanges
+      ? `<div class="xtform-draft-actions">
+          <button class="xtform-draft-accept-all">Accept All</button>
+          <button class="xtform-draft-reject-all">Reject All</button>
+        </div>`
       : '';
 
+    // The root document is a component like any other and can carry its
+    // own `changes.status` (see `XtformRootChanges`) — colored and badged
+    // the same way as any item's (spec/xtdraft-format.md, "Rendering").
     const formHeader = `
-      <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
+      <div class="xtform-form-header xtform-component${draftStatusClass(doc)}" data-uuid="${doc.uuid}">
         <div class="xtform-form-header-row">
-          <h2 class="xtform-form-title">${escapeHtml(doc.title || 'Untitled Form')} ${draftBadge}</h2>
+          <h2 class="xtform-form-title">${escapeHtml(doc.label || 'Untitled Form')}${draftStatusBadgeHtml(doc)} ${draftBadge}</h2>
           ${draftToolbarHtml}
           ${applyButton}
           ${quickMenuButton}
@@ -1097,26 +1098,24 @@ function setupEventListeners(): void {
   });
 
   // Status badge ("A" / "R" / "M") — opens the item's popup (Accept/Reject
-  // or Apply/Reject inside it are wired at creation time in
-  // `openAddedRemovedPopup`/`openMetadataPopup`, not here)
+  // is wired at creation time in `openAddedRemovedPopup`/`openMetadataPopup`,
+  // not here)
   setupStatusBadges();
 
-  // Draft toolbar: Apply all / Cancel — Agent commands (spec/xtdraft-format.md)
-  document.querySelectorAll('.xtform-draft-apply-all').forEach(btn => {
+  // Draft toolbar: Accept All / Reject All — mechanical operations this
+  // extension performs itself, not Agent commands (spec/xtdraft-format.md,
+  // "Accept All" / "Reject All")
+  document.querySelectorAll('.xtform-draft-accept-all').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (draftActions.applyAll) {
-        sendRunCommand(draftActions.applyAll);
-      }
+      sendAcceptAllChanges();
     });
   });
 
-  document.querySelectorAll('.xtform-draft-cancel').forEach(btn => {
+  document.querySelectorAll('.xtform-draft-reject-all').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (draftActions.cancel) {
-        sendRunCommand(draftActions.cancel);
-      }
+      sendRejectAllChanges();
     });
   });
 
@@ -1196,17 +1195,6 @@ function renderPropertyEditor(uuid: string): void {
         <input type="text" class="property-input" value="${node.uuid}" readonly />
       </div>
 
-      ${node.type === 'Form' ? `
-      <div class="property-section">
-        <label class="property-label">Title</label>
-        <input
-          type="text"
-          class="property-input"
-          id="prop-title"
-          value="${escapeHtml(node.title || '')}"
-        />
-      </div>
-      ` : node.type !== 'Form' ? `
       <div class="property-section">
         <label class="property-label">Label</label>
         <input
@@ -1216,7 +1204,6 @@ function renderPropertyEditor(uuid: string): void {
           value="${escapeHtml(node.label || '')}"
         />
       </div>
-      ` : ''}
 
       <div class="property-section">
         <label class="property-label">Description</label>
@@ -1252,15 +1239,7 @@ function renderPropertyEditor(uuid: string): void {
 }
 
 function setupPropertyEditorListeners(uuid: string): void {
-  // Title (for Form)
-  const titleInput = document.getElementById('prop-title') as HTMLInputElement;
-  if (titleInput) {
-    titleInput.addEventListener('input', () => {
-      sendUpdateProperty(uuid, 'title', titleInput.value);
-    });
-  }
-
-  // Label
+  // Label (Form and every other node type alike)
   const labelInput = document.getElementById('prop-label') as HTMLInputElement;
   if (labelInput) {
     labelInput.addEventListener('input', () => {
@@ -1432,6 +1411,26 @@ function findNode(doc: XtformDocument, uuid: string): XtformNode | XtformDocumen
   return null;
 }
 
+// Counts every node (at any depth) carrying a `changes.status` — the draft
+// toolbar's "{N} remaining" count (spec/xtdraft-format.md, "Toolbar").
+function countPendingChanges(doc: XtformDocument): number {
+  function countIn(node: XtformNode): number {
+    let count = node.changes?.status ? 1 : 0;
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        count += countIn(child);
+      }
+    }
+    return count;
+  }
+
+  // The root document is a component like any other and can carry its own
+  // `changes.status` (see `XtformRootChanges`), so it counts too.
+  const rootCount = doc.changes?.status ? 1 : 0;
+  const itemsCount = doc.items ? doc.items.reduce((total, item) => total + countIn(item), 0) : 0;
+  return rootCount + itemsCount;
+}
+
 // === MESSAGE HANDLERS ===
 
 function sendUpdateValue(uuid: string, value: any): void {
@@ -1451,12 +1450,12 @@ function sendUpdateProperty(uuid: string, property: string, value: any): void {
   });
 }
 
-// Metadata popup Apply/Reject (spec/xtdraft-format.md, "Modified fields") —
+// Metadata popup Accept/Reject (spec/xtdraft-format.md, "Modified fields") —
 // unlike `sendRunCommand`, these are handled directly by this extension
 // (`xtformEditorProvider.ts`), not dispatched to an external Agent command.
-function sendApplyModifiedField(uuid: string, values: Record<string, unknown>): void {
+function sendAcceptModifiedField(uuid: string, values: Record<string, unknown>): void {
   vscode.postMessage({
-    type: 'applyModifiedField',
+    type: 'acceptModifiedField',
     uuid,
     values
   });
@@ -1478,6 +1477,17 @@ function sendResolveAddedRemovedItem(uuid: string, action: 'accept' | 'reject'):
     uuid,
     action
   });
+}
+
+// Draft toolbar Accept All / Reject All (spec/xtdraft-format.md, "Accept
+// All" / "Reject All") — like the other draft mutations above, handled
+// directly by this extension rather than dispatched as an Agent command.
+function sendAcceptAllChanges(): void {
+  vscode.postMessage({ type: 'acceptAllChanges' });
+}
+
+function sendRejectAllChanges(): void {
+  vscode.postMessage({ type: 'rejectAllChanges' });
 }
 
 function sendAddComponent(parentUuid: string | null, node: XtformNode): void {
@@ -1553,7 +1563,6 @@ window.addEventListener('message', event => {
 
         quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
         applyAction = message.applyAction ?? null;
-        draftActions = message.draftActions && typeof message.draftActions === 'object' ? message.draftActions : {};
         currentDoc = YAML.parse(message.content) as XtformDocument;
         unflattenNode(currentDoc);
         renderForm(currentDoc);
@@ -1563,7 +1572,7 @@ window.addEventListener('message', event => {
           let restoredElement: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null = null;
 
           // Try to restore Property Editor fields first (by ID)
-          if (elementId && (elementId.startsWith('prop-') || elementId === 'prop-title' || elementId === 'prop-label' || elementId === 'prop-description' || elementId === 'prop-options')) {
+          if (elementId && elementId.startsWith('prop-')) {
             restoredElement = document.getElementById(elementId) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
           }
           // Otherwise restore form fields (by data-uuid)

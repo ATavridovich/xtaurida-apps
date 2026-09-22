@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as YAML from 'yaml';
-import { XtformDocument, XtformNode, XtformParseError, XtformTableRow } from './xtformDocument';
+import { XtformDocument, XtformItemChangesPrev, XtformNode, XtformParseError, XtformTableRow } from './xtformDocument';
 
 /**
  * Node-level prefixes that are written as flat dotted keys on disk
@@ -231,6 +231,46 @@ function setNodeProperty(node: Record<string, any>, property: string, value: any
 }
 
 /**
+ * Writes every field in a `changes.prev` snapshot back onto its node —
+ * shared by `cancelModifiedField` and `rejectAllChanges`, which both
+ * restore a `modified` item's pre-draft values the same way.
+ */
+function restoreFromPrev(node: Record<string, any>, prev: XtformItemChangesPrev): void {
+  for (const [key, value] of Object.entries(prev)) {
+    if (key === 'instructions' && value && typeof value === 'object') {
+      for (const [instructionKey, instructionValue] of Object.entries(value as Record<string, unknown>)) {
+        setNodeProperty(node, `instructions.${instructionKey}`, instructionValue);
+      }
+    } else {
+      setNodeProperty(node, key, value);
+    }
+  }
+}
+
+/**
+ * Clears an item's own pending-change status — the `status`/`prev` pair a
+ * resolved Accept/Reject/Apply/Reject leaves behind. For an ordinary item,
+ * `changes` holds nothing else, so this drops the whole object. For the
+ * root document, which is a component like any other and can carry its own
+ * `status`/`prev` alongside `kind` (see `XtformRootChanges`), only `status`
+ * and `prev` are cleared — `kind` and any other generator metadata describe
+ * the document's draft as a whole and survive independently of the root's
+ * own resolved status.
+ */
+function clearNodeChangeStatus(node: XtformNode | XtformDocument): void {
+  if (!node.changes) {
+    return;
+  }
+
+  if ('kind' in node.changes) {
+    delete (node.changes as Record<string, unknown>).status;
+    delete (node.changes as Record<string, unknown>).prev;
+  } else {
+    delete (node as any).changes;
+  }
+}
+
+/**
  * Updates any property of a node
  *
  * @param doc - XtformDocument to update
@@ -271,17 +311,17 @@ export function updateNodeProperty(
 
 /**
  * Applies a `modified` item's resolved per-field selection — from the
- * Viewer's metadata popup, see spec/xtdraft-format.md ("Modified fields") —
- * and clears its `changes`. This is a mechanical write owned by the Viewer
- * itself, unlike the form-level "Apply all"/"Cancel" toolbar, which is an
- * Agent command (spec/xtdraft-format.md, "Toolbar").
+ * Viewer's metadata popup Accept, see spec/xtdraft-format.md ("Modified
+ * fields") — and clears its `changes`. Like the form-level "Accept All"/
+ * "Reject All" toolbar, this is a mechanical write the Viewer performs
+ * itself, not an Agent command.
  *
  * @param doc - XtformDocument to update
  * @param uuid - UUID of the modified node
  * @param values - Field key → resolved value (already chosen between prev/current by the Viewer); keys use the same 'instructions.*' notation as `updateNodeProperty`
  * @returns Updated XtformDocument
  */
-export function applyModifiedField(
+export function acceptModifiedField(
   doc: XtformDocument,
   uuid: string,
   values: Record<string, any>
@@ -293,7 +333,7 @@ export function applyModifiedField(
       for (const [key, value] of Object.entries(values)) {
         setNodeProperty(node, key, value);
       }
-      delete (node as any).changes;
+      clearNodeChangeStatus(node);
       return true;
     }
 
@@ -317,7 +357,7 @@ export function applyModifiedField(
  * Reverts a `modified` item to its `changes.prev` snapshot and clears
  * `changes` — see spec/xtdraft-format.md ("Modified fields", Reject). A
  * no-op (besides clearing `changes`) if the item has no `changes.prev`.
- * Like `applyModifiedField`, this is a mechanical write owned by the
+ * Like `acceptModifiedField`, this is a mechanical write owned by the
  * Viewer, not an Agent command.
  *
  * @param doc - XtformDocument to update
@@ -331,17 +371,9 @@ export function cancelModifiedField(doc: XtformDocument, uuid: string): XtformDo
     if (node.uuid === uuid) {
       const prev = (node as XtformNode).changes?.prev;
       if (prev) {
-        for (const [key, value] of Object.entries(prev)) {
-          if (key === 'instructions' && value && typeof value === 'object') {
-            for (const [instructionKey, instructionValue] of Object.entries(value as Record<string, unknown>)) {
-              setNodeProperty(node, `instructions.${instructionKey}`, instructionValue);
-            }
-          } else {
-            setNodeProperty(node, key, value);
-          }
-        }
+        restoreFromPrev(node, prev);
       }
-      delete (node as any).changes;
+      clearNodeChangeStatus(node);
       return true;
     }
 
@@ -482,6 +514,10 @@ function stripNewSuffix(uuid: string): string {
  * `:new` from its uuid (the item becomes permanent); `accept` on `removed`
  * deletes it; `reject` on `added` deletes it; `reject` on `removed` clears
  * `changes` (the item is restored). Mutates `root` in place.
+ *
+ * The root document is a component like any other and can carry the same
+ * `added`/`removed` status (`XtformRootChanges`), but has no parent to
+ * delete it from — resolving that case just clears its own status instead.
  */
 function resolveOneAddedRemovedItem(
   root: XtformDocument,
@@ -490,23 +526,27 @@ function resolveOneAddedRemovedItem(
   action: 'accept' | 'reject'
 ): void {
   if (status === 'added' && action === 'accept') {
-    const node = findMutableNode(root, uuid) as XtformNode | null;
+    const node = findMutableNode(root, uuid);
     if (node) {
-      delete (node as any).changes;
+      clearNodeChangeStatus(node);
       node.uuid = stripNewSuffix(node.uuid);
     }
     return;
   }
 
   if (status === 'removed' && action === 'reject') {
-    const node = findMutableNode(root, uuid) as XtformNode | null;
+    const node = findMutableNode(root, uuid);
     if (node) {
-      delete (node as any).changes;
+      clearNodeChangeStatus(node);
     }
     return;
   }
 
   // 'added' + reject, or 'removed' + accept: the item goes away either way
+  if (uuid === root.uuid) {
+    clearNodeChangeStatus(root);
+    return;
+  }
   deleteNodeInPlace(root, uuid);
 }
 
@@ -550,6 +590,117 @@ export function resolveAddedRemovedItem(
     resolveOneAddedRemovedItem(newDoc, pairUuid, pairStatus, action);
   }
 
+  bumpRevision(newDoc);
+  return newDoc;
+}
+
+/**
+ * Collects every item (at any depth below the root) carrying a
+ * `changes.status`, in document order. Does not include the root document's
+ * own status — `acceptAllChanges`/`rejectAllChanges` check that separately,
+ * since resolving it needs different handling (the root has no parent to
+ * delete it from).
+ */
+function collectChangedNodes(root: XtformNode | XtformDocument, out: XtformNode[] = []): XtformNode[] {
+  if (Array.isArray(root.items)) {
+    for (const child of root.items) {
+      if (child.changes?.status) {
+        out.push(child);
+      }
+      collectChangedNodes(child, out);
+    }
+  }
+  return out;
+}
+
+/**
+ * Accepts every pending change in the document at once — see
+ * spec/xtdraft-format.md ("Accept All"): for each item with
+ * `changes.status` at any depth, `added` is kept (clearing `changes` and
+ * stripping `:new` from its uuid), `removed` is deleted, and `modified`
+ * keeps its already-current values (clearing `changes`). The root document
+ * is a component like any other and can carry its own `added`/`removed`/
+ * `modified` status too (`XtformRootChanges`) — it's resolved the same way,
+ * except `removed`/`added` can't delete or recreate the document itself, so
+ * only its own status is cleared. Finally strips the root's `changes.*`
+ * fields (`kind` and any other generator metadata) now that every pending
+ * change is resolved. Like `acceptModifiedField`/`resolveAddedRemovedItem`,
+ * this is a mechanical write the Viewer performs itself, not an Agent
+ * command.
+ *
+ * @param doc - XtformDocument to update
+ * @returns Updated XtformDocument
+ */
+export function acceptAllChanges(doc: XtformDocument): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  if (newDoc.changes?.status === 'added') {
+    newDoc.uuid = stripNewSuffix(newDoc.uuid);
+  }
+
+  // Deletions are collected up front and applied after the walk, since
+  // splicing a node out of `items` mid-traversal would disturb it.
+  const toDelete: string[] = [];
+  for (const node of collectChangedNodes(newDoc)) {
+    if (node.changes?.status === 'removed') {
+      toDelete.push(node.uuid);
+      continue;
+    }
+    if (node.changes?.status === 'added') {
+      node.uuid = stripNewSuffix(node.uuid);
+    }
+    delete (node as any).changes;
+  }
+  for (const uuid of toDelete) {
+    deleteNodeInPlace(newDoc, uuid);
+  }
+
+  delete (newDoc as any).changes;
+  bumpRevision(newDoc);
+  return newDoc;
+}
+
+/**
+ * Rejects every pending change in the document at once — see
+ * spec/xtdraft-format.md ("Reject All"): for each item with
+ * `changes.status` at any depth, `added` is deleted, `removed` is kept
+ * (clearing `changes`), and `modified` is restored to its `changes.prev`
+ * snapshot (clearing `changes`). The root document is a component like any
+ * other and can carry its own `added`/`removed`/`modified` status too
+ * (`XtformRootChanges`) — it's resolved the same way, except `added` can't
+ * delete the document itself, so only its own status is cleared. Finally
+ * strips the root's `changes.*` fields (`kind` and any other generator
+ * metadata) now that every pending change is resolved. Like
+ * `cancelModifiedField`/`resolveAddedRemovedItem`, this is a mechanical
+ * write the Viewer performs itself, not an Agent command.
+ *
+ * @param doc - XtformDocument to update
+ * @returns Updated XtformDocument
+ */
+export function rejectAllChanges(doc: XtformDocument): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  if (newDoc.changes?.status === 'modified' && newDoc.changes.prev) {
+    restoreFromPrev(newDoc, newDoc.changes.prev);
+  }
+
+  const toDelete: string[] = [];
+  for (const node of collectChangedNodes(newDoc)) {
+    const status = node.changes?.status;
+    if (status === 'added') {
+      toDelete.push(node.uuid);
+      continue;
+    }
+    if (status === 'modified' && node.changes?.prev) {
+      restoreFromPrev(node, node.changes.prev);
+    }
+    delete (node as any).changes;
+  }
+  for (const uuid of toDelete) {
+    deleteNodeInPlace(newDoc, uuid);
+  }
+
+  delete (newDoc as any).changes;
   bumpRevision(newDoc);
   return newDoc;
 }

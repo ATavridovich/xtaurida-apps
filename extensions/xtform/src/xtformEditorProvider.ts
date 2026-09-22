@@ -9,9 +9,11 @@ import {
   serializeXtformDocument,
   updateNodeValue,
   updateNodeProperty,
-  applyModifiedField,
+  acceptModifiedField,
   cancelModifiedField,
   resolveAddedRemovedItem,
+  acceptAllChanges,
+  rejectAllChanges,
   addNode,
   deleteNode,
   findNode,
@@ -26,25 +28,6 @@ import { Disposable } from './util/dispose';
 interface FormQuickAction {
   command: string;
   title: string;
-}
-
-/**
- * Draft-related commands declared by the xTaurida Agent extension's own
- * manifest (`xtaurida.formDraftActions` in its package.json) — the
- * form-level toolbar only (spec/xtdraft-format.md, "Toolbar"): "Both
- * buttons are Agent commands — viewer just renders them" and never resolves
- * the draft itself.
- *
- * Every component-level action — the modified-field metadata popup's
- * Apply/Reject (spec/xtdraft-format.md, "Modified fields") and the added/
- * removed status popup's Accept/Reject ("Added / Removed") — is NOT an
- * Agent command; it's a mechanical write the Viewer performs itself, see
- * `handleApplyModifiedField`/`handleCancelModifiedField` and
- * `handleResolveAddedRemovedItem` below.
- */
-interface FormDraftActions {
-  applyAll?: string;
-  cancel?: string;
 }
 
 /**
@@ -75,19 +58,6 @@ function getFormApplyAction(): FormQuickAction | undefined {
   return action && typeof action.command === 'string' && typeof action.title === 'string'
     ? action
     : undefined;
-}
-
-/**
- * Reads the draft toolbar/field commands declared by the xTaurida Agent
- * extension's manifest (`xtaurida.formDraftActions`). Whether a given form
- * actually shows the draft toolbar or field buttons is decided by the
- * Viewer from the document's own `changes` fields, not here — see
- * spec/xtdraft-format.md ("Detection").
- */
-function getFormDraftActions(): FormDraftActions {
-  const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
-  const actions = agentExt?.packageJSON?.xtaurida?.formDraftActions;
-  return actions && typeof actions === 'object' ? actions : {};
 }
 
 /**
@@ -421,12 +391,12 @@ class XtformEditor extends Disposable {
         await this.editQueue;
         break;
 
-      case 'applyModifiedField':
-        // Metadata popup Apply — write the user's resolved per-field
+      case 'acceptModifiedField':
+        // Metadata popup Accept — write the user's resolved per-field
         // selection and clear `changes` (spec/xtdraft-format.md, "Modified
         // fields"). Not an Agent command — the Viewer does this itself.
         this.editQueue = this.editQueue.then(async () => {
-          await this.handleApplyModifiedField(message.uuid, message.values);
+          await this.handleAcceptModifiedField(message.uuid, message.values);
         });
         await this.editQueue;
         break;
@@ -447,6 +417,26 @@ class XtformEditor extends Disposable {
         // Removed"). Not an Agent command — the Viewer does this itself.
         this.editQueue = this.editQueue.then(async () => {
           await this.handleResolveAddedRemovedItem(message.uuid, message.action);
+        });
+        await this.editQueue;
+        break;
+
+      case 'acceptAllChanges':
+        // Draft toolbar Accept All — resolves every pending change in the
+        // document at once (spec/xtdraft-format.md, "Accept All"). Not an
+        // Agent command — the Viewer does this itself.
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleAcceptAllChanges();
+        });
+        await this.editQueue;
+        break;
+
+      case 'rejectAllChanges':
+        // Draft toolbar Reject All — rejects every pending change in the
+        // document at once (spec/xtdraft-format.md, "Reject All"). Not an
+        // Agent command — the Viewer does this itself.
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleRejectAllChanges();
         });
         await this.editQueue;
         break;
@@ -500,10 +490,9 @@ class XtformEditor extends Disposable {
         break;
 
       case 'runCommand':
-        // Quick action from the form header menu, or a draft toolbar/field
-        // button (spec/xtdraft-format.md) — all Agent commands the Viewer
-        // just renders and dispatches, with optional arguments (e.g. a
-        // field's uuid for Accept/Reject).
+        // Quick action from the form header menu, or the universal Apply
+        // button (`show_apply_action`) — Agent commands the Viewer just
+        // renders and dispatches.
         await this.handleRunCommand(message.command, message.args);
         break;
 
@@ -515,10 +504,10 @@ class XtformEditor extends Disposable {
   }
 
   /**
-   * Runs an Agent command (from the form header quick-menu, or a draft
-   * toolbar/field button) against this document. `command` is the full
+   * Runs an Agent command (from the form header quick-menu, or the
+   * universal Apply button) against this document. `command` is the full
    * command id as declared by whichever extension contributed it (see
-   * `getFormQuickActions`/`getFormDraftActions`) — resolves the target file
+   * `getFormQuickActions`/`getFormApplyAction`) — resolves the target file
    * from the active editor tab, which is this custom editor's panel.
    */
   private async handleRunCommand(command: string, args?: unknown[]): Promise<void> {
@@ -564,18 +553,18 @@ class XtformEditor extends Disposable {
   }
 
   /**
-   * Handles the modified-field metadata popup's Apply — writes the user's
+   * Handles the modified-field metadata popup's Accept — writes the user's
    * resolved per-field selection and clears `changes` for that item.
    */
-  private async handleApplyModifiedField(uuid: string, values: Record<string, any>): Promise<void> {
+  private async handleAcceptModifiedField(uuid: string, values: Record<string, any>): Promise<void> {
     try {
       const doc = parseXtformDocument(this.document.content);
-      const newDoc = applyModifiedField(doc, uuid, values);
+      const newDoc = acceptModifiedField(doc, uuid, values);
       const newContent = serializeXtformDocument(newDoc);
       this.document.setContent(newContent);
     } catch (error) {
       vscode.window.showErrorMessage(
-        `Failed to apply changes: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to accept changes: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -610,6 +599,40 @@ class XtformEditor extends Disposable {
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to ${action} change: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles the draft toolbar's Accept All — resolves every pending change
+   * in the document at once.
+   */
+  private async handleAcceptAllChanges(): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = acceptAllChanges(doc);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to accept all changes: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles the draft toolbar's Reject All — rejects every pending change
+   * in the document at once.
+   */
+  private async handleRejectAllChanges(): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = rejectAllChanges(doc);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to reject all changes: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -759,8 +782,7 @@ class XtformEditor extends Disposable {
       type: 'update',
       content: this.document.content,
       quickActions: getFormQuickActions(),
-      applyAction: getFormApplyAction() ?? null,
-      draftActions: getFormDraftActions()
+      applyAction: getFormApplyAction() ?? null
     });
   }
 }

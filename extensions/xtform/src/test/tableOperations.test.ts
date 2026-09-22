@@ -14,7 +14,7 @@ suite('Table operations (yamlParser)', () => {
     return parseXtformDocument(`
 type: Form
 uuid: "form-001"
-title: "Test Form"
+label: "Test Form"
 items:
   - type: Table
     uuid: "t-001"

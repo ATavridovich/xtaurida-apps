@@ -6481,7 +6481,6 @@ ${end.comment}` : end.comment;
   var quickActions = [];
   var openQuickMenu = null;
   var applyAction = null;
-  var draftActions = {};
   function closeQuickMenu() {
     if (openQuickMenu) {
       openQuickMenu.remove();
@@ -6544,12 +6543,13 @@ ${end.comment}` : end.comment;
       return [];
     }
     const entries = [];
+    const nodeFields = node;
     if ("value" in prev) {
-      entries.push({ key: "value", prevValue: prev.value, currValue: node.value });
+      entries.push({ key: "value", prevValue: prev.value, currValue: nodeFields.value });
     }
     for (const key of MODIFIED_DIFF_FIELD_ORDER) {
       if (key in prev) {
-        entries.push({ key, prevValue: prev[key], currValue: node[key] });
+        entries.push({ key, prevValue: prev[key], currValue: nodeFields[key] });
       }
     }
     if (prev.instructions) {
@@ -6565,7 +6565,7 @@ ${end.comment}` : end.comment;
       return "";
     }
     const letter = status === "added" ? "A" : status === "removed" ? "R" : "M";
-    const title = status === "added" ? "Added" : status === "removed" ? "Removed" : "Show changes";
+    const title = status === "added" ? "Added" : status === "removed" ? "Removed" : "Modified";
     return ` <button type="button" class="xtform-status-badge xtform-status-badge-${status}" data-uuid="${node.uuid}" title="${title}">${letter}</button>`;
   }
   var openFieldPopupEl = null;
@@ -6615,7 +6615,7 @@ ${end.comment}` : end.comment;
     const popup = document.createElement("div");
     popup.className = "xtform-metadata-popup";
     popup.addEventListener("click", (e) => e.stopPropagation());
-    const title = node.label || node.type;
+    const title = node.label || (node.type === "Form" ? "Untitled Form" : node.type);
     popup.innerHTML = `
     <div class="xtform-metadata-header">
       <span class="xtform-metadata-title">Changes \u2014 "${escapeHtml(title)}"</span>
@@ -6625,7 +6625,7 @@ ${end.comment}` : end.comment;
       ${entries.map(() => '<div class="xtform-metadata-row"></div>').join("")}
     </div>
     <div class="xtform-metadata-footer">
-      <button type="button" class="xtform-metadata-apply">Apply</button>
+      <button type="button" class="xtform-metadata-accept">Accept</button>
       <button type="button" class="xtform-metadata-reject">Reject</button>
     </div>
   `;
@@ -6639,12 +6639,12 @@ ${end.comment}` : end.comment;
       });
     });
     popup.querySelector(".xtform-metadata-close")?.addEventListener("click", () => closeFieldPopup());
-    popup.querySelector(".xtform-metadata-apply")?.addEventListener("click", () => {
+    popup.querySelector(".xtform-metadata-accept")?.addEventListener("click", () => {
       const values = {};
       for (const entry of entries) {
         values[entry.key] = selections[entry.key] === "prev" ? entry.prevValue : entry.currValue;
       }
-      sendApplyModifiedField(node.uuid, values);
+      sendAcceptModifiedField(node.uuid, values);
       closeFieldPopup();
     });
     popup.querySelector(".xtform-metadata-reject")?.addEventListener("click", () => {
@@ -6695,7 +6695,7 @@ ${end.comment}` : end.comment;
         e.stopPropagation();
         const uuid = badge.getAttribute("data-uuid");
         const node = uuid && currentDoc ? findNode(currentDoc, uuid) : null;
-        if (!node || node.type === "Form") {
+        if (!node) {
           return;
         }
         const status = node.changes?.status;
@@ -6878,6 +6878,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}${draftStatusBadgeHtml(node)}</h2>` : ""}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -6889,6 +6890,7 @@ ${end.comment}` : end.comment;
     return `
     <details class="xtform-collapsible-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}" open>
       <summary>${node.label ? escapeHtml(node.label) : "Collapsible Section"}${draftStatusBadgeHtml(node)}</summary>
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -6900,6 +6902,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-tab xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : "Tab"}${draftStatusBadgeHtml(node)}</div>
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <div class="xtform-tab-content">
         ${childrenHtml}
       </div>
@@ -6984,19 +6987,21 @@ ${end.comment}` : end.comment;
     if (!formPreview)
       return;
     try {
-      const quickMenuButton = quickActions.length > 0 && !doc.disable_quick_actions ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">\u22EE</button>` : "";
+      const pendingChangeCount = countPendingChanges(doc);
+      const hasPendingChanges = pendingChangeCount > 0;
+      const quickMenuButton = quickActions.length > 0 && !doc.disable_quick_actions && !hasPendingChanges ? `<button class="xtform-quick-menu-btn" title="Quick actions" aria-label="Quick actions">\u22EE</button>` : "";
       const applyEligible = applyAction !== null && doc.show_apply_action === true;
       const applyEnabled = applyEligible && (doc.applied_revision == null || doc.applied_revision !== doc.revision);
       const applyButton = applyEligible ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction.command)}"${applyEnabled ? "" : " disabled"}>${escapeHtml(applyAction.title)}</button>` : "";
-      const hasPendingChanges = !!doc.changes?.kind;
-      const draftBadge = hasPendingChanges ? '<span class="xtform-draft-badge">(pending changes)</span>' : "";
-      const applyAllBtn = hasPendingChanges && draftActions.applyAll ? `<button class="xtform-draft-apply-all">Apply all</button>` : "";
-      const cancelBtn = hasPendingChanges && draftActions.cancel ? `<button class="xtform-draft-cancel">Cancel</button>` : "";
-      const draftToolbarHtml = applyAllBtn || cancelBtn ? `<div class="xtform-draft-actions">${applyAllBtn}${cancelBtn}</div>` : "";
+      const draftBadge = hasPendingChanges ? `<span class="xtform-draft-badge">(pending changes \u2014 ${pendingChangeCount} remaining)</span>` : "";
+      const draftToolbarHtml = hasPendingChanges ? `<div class="xtform-draft-actions">
+          <button class="xtform-draft-accept-all">Accept All</button>
+          <button class="xtform-draft-reject-all">Reject All</button>
+        </div>` : "";
       const formHeader = `
-      <div class="xtform-form-header xtform-component" data-uuid="${doc.uuid}">
+      <div class="xtform-form-header xtform-component${draftStatusClass(doc)}" data-uuid="${doc.uuid}">
         <div class="xtform-form-header-row">
-          <h2 class="xtform-form-title">${escapeHtml(doc.title || "Untitled Form")} ${draftBadge}</h2>
+          <h2 class="xtform-form-title">${escapeHtml(doc.label || "Untitled Form")}${draftStatusBadgeHtml(doc)} ${draftBadge}</h2>
           ${draftToolbarHtml}
           ${applyButton}
           ${quickMenuButton}
@@ -7090,20 +7095,16 @@ ${end.comment}` : end.comment;
       });
     });
     setupStatusBadges();
-    document.querySelectorAll(".xtform-draft-apply-all").forEach((btn) => {
+    document.querySelectorAll(".xtform-draft-accept-all").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (draftActions.applyAll) {
-          sendRunCommand(draftActions.applyAll);
-        }
+        sendAcceptAllChanges();
       });
     });
-    document.querySelectorAll(".xtform-draft-cancel").forEach((btn) => {
+    document.querySelectorAll(".xtform-draft-reject-all").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (draftActions.cancel) {
-          sendRunCommand(draftActions.cancel);
-        }
+        sendRejectAllChanges();
       });
     });
     document.querySelectorAll(".xtform-cell-input, .xtform-cell-checkbox").forEach((el) => {
@@ -7166,17 +7167,6 @@ ${end.comment}` : end.comment;
         <input type="text" class="property-input" value="${node.uuid}" readonly />
       </div>
 
-      ${node.type === "Form" ? `
-      <div class="property-section">
-        <label class="property-label">Title</label>
-        <input
-          type="text"
-          class="property-input"
-          id="prop-title"
-          value="${escapeHtml(node.title || "")}"
-        />
-      </div>
-      ` : node.type !== "Form" ? `
       <div class="property-section">
         <label class="property-label">Label</label>
         <input
@@ -7186,7 +7176,6 @@ ${end.comment}` : end.comment;
           value="${escapeHtml(node.label || "")}"
         />
       </div>
-      ` : ""}
 
       <div class="property-section">
         <label class="property-label">Description</label>
@@ -7220,12 +7209,6 @@ ${end.comment}` : end.comment;
     setupPropertyEditorListeners(uuid);
   }
   function setupPropertyEditorListeners(uuid) {
-    const titleInput = document.getElementById("prop-title");
-    if (titleInput) {
-      titleInput.addEventListener("input", () => {
-        sendUpdateProperty(uuid, "title", titleInput.value);
-      });
-    }
     const labelInput = document.getElementById("prop-label");
     if (labelInput) {
       labelInput.addEventListener("input", () => {
@@ -7353,6 +7336,20 @@ ${end.comment}` : end.comment;
     }
     return null;
   }
+  function countPendingChanges(doc) {
+    function countIn(node) {
+      let count = node.changes?.status ? 1 : 0;
+      if (node.items && Array.isArray(node.items)) {
+        for (const child of node.items) {
+          count += countIn(child);
+        }
+      }
+      return count;
+    }
+    const rootCount = doc.changes?.status ? 1 : 0;
+    const itemsCount = doc.items ? doc.items.reduce((total, item) => total + countIn(item), 0) : 0;
+    return rootCount + itemsCount;
+  }
   function sendUpdateValue(uuid, value) {
     vscode.postMessage({
       type: "updateValue",
@@ -7368,9 +7365,9 @@ ${end.comment}` : end.comment;
       value
     });
   }
-  function sendApplyModifiedField(uuid, values) {
+  function sendAcceptModifiedField(uuid, values) {
     vscode.postMessage({
-      type: "applyModifiedField",
+      type: "acceptModifiedField",
       uuid,
       values
     });
@@ -7387,6 +7384,12 @@ ${end.comment}` : end.comment;
       uuid,
       action
     });
+  }
+  function sendAcceptAllChanges() {
+    vscode.postMessage({ type: "acceptAllChanges" });
+  }
+  function sendRejectAllChanges() {
+    vscode.postMessage({ type: "rejectAllChanges" });
   }
   function sendAddComponent(parentUuid, node) {
     vscode.postMessage({
@@ -7446,13 +7449,12 @@ ${end.comment}` : end.comment;
           const selectionEnd = hasFocus && "selectionEnd" in activeElement ? activeElement.selectionEnd : null;
           quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
           applyAction = message.applyAction ?? null;
-          draftActions = message.draftActions && typeof message.draftActions === "object" ? message.draftActions : {};
           currentDoc = parse(message.content);
           unflattenNode(currentDoc);
           renderForm(currentDoc);
           if (hasFocus) {
             let restoredElement = null;
-            if (elementId && (elementId.startsWith("prop-") || elementId === "prop-title" || elementId === "prop-label" || elementId === "prop-description" || elementId === "prop-options")) {
+            if (elementId && elementId.startsWith("prop-")) {
               restoredElement = document.getElementById(elementId);
             } else if (uuid) {
               if (radioValue !== null) {
