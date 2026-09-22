@@ -9,6 +9,8 @@ import {
   serializeXtformDocument,
   updateNodeValue,
   updateNodeProperty,
+  applyModifiedField,
+  cancelModifiedField,
   addNode,
   deleteNode,
   findNode,
@@ -33,6 +35,11 @@ interface FormQuickAction {
  * Agent commands — viewer just renders them") and never resolves the draft
  * itself. `fieldAccept`/`fieldReject` are invoked with the item's uuid as
  * their sole argument.
+ *
+ * The modified-field metadata popup's own Apply/Cancel (spec/xtdraft-
+ * format.md, "Modified fields") are NOT Agent commands — they're a
+ * mechanical write/revert the Viewer performs itself, see
+ * `handleApplyModifiedField`/`handleCancelModifiedField` below.
  */
 interface FormDraftActions {
   applyAll?: string;
@@ -415,6 +422,26 @@ class XtformEditor extends Disposable {
         await this.editQueue;
         break;
 
+      case 'applyModifiedField':
+        // Metadata popup Apply — write the user's resolved per-field
+        // selection and clear `changes` (spec/xtdraft-format.md, "Modified
+        // fields"). Not an Agent command — the Viewer does this itself.
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleApplyModifiedField(message.uuid, message.values);
+        });
+        await this.editQueue;
+        break;
+
+      case 'cancelModifiedField':
+        // Metadata popup Cancel — revert to `changes.prev` and clear
+        // `changes` (spec/xtdraft-format.md, "Modified fields"). Not an
+        // Agent command — the Viewer does this itself.
+        this.editQueue = this.editQueue.then(async () => {
+          await this.handleCancelModifiedField(message.uuid);
+        });
+        await this.editQueue;
+        break;
+
       case 'addComponent':
         // Add new component from palette
         this.editQueue = this.editQueue.then(async () => {
@@ -523,6 +550,40 @@ class XtformEditor extends Disposable {
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to update property: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles the modified-field metadata popup's Apply — writes the user's
+   * resolved per-field selection and clears `changes` for that item.
+   */
+  private async handleApplyModifiedField(uuid: string, values: Record<string, any>): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = applyModifiedField(doc, uuid, values);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to apply changes: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles the modified-field metadata popup's Cancel — reverts that item
+   * to its `changes.prev` snapshot and clears `changes`.
+   */
+  private async handleCancelModifiedField(uuid: string): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const newDoc = cancelModifiedField(doc, uuid);
+      const newContent = serializeXtformDocument(newDoc);
+      this.document.setContent(newContent);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to cancel changes: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

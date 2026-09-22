@@ -21,12 +21,31 @@ export interface XtformRootChanges {
 }
 
 /**
+ * Snapshot of a node's previous field values, carried on `changes.prev` for
+ * a `modified` item — see spec/xtdraft-format.md ("Modified fields"). Only
+ * fields that actually changed are present; an absent field means it is
+ * unchanged from its current value.
+ */
+export interface XtformItemChangesPrev {
+  label?: string;
+  description?: string;
+  value?: any;
+  options?: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+  instructions?: Record<string, string>;
+}
+
+/**
  * Marks an individual item as part of a pending draft proposal — see
  * spec/xtdraft-format.md ("Rendering", "Field buttons"). Absent on items
  * that aren't part of a pending proposal (rendered with no special color).
  */
 export interface XtformItemChanges {
-  status: 'added' | 'removed';
+  status: 'added' | 'removed' | 'modified';
+
+  /** Previous field values — present (and meaningful) only when `status` is `modified`. */
+  prev?: XtformItemChangesPrev;
 }
 
 /**

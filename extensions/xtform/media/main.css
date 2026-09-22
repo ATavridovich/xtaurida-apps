@@ -873,6 +873,12 @@ body {
   padding-left: 9px;
 }
 
+.xtform-draft-modified {
+  background-color: rgba(210, 153, 34, 0.15);
+  border-left: 3px solid var(--vscode-gitDecoration-modifiedResourceForeground, #d29922);
+  padding-left: 9px;
+}
+
 /* Draft field buttons: Accept (✓) / Reject (✗), shown on hover */
 .xtform-draft-buttons {
   position: absolute;
@@ -910,4 +916,166 @@ body {
 .xtform-draft-reject:hover {
   background: var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
   color: #fff;
+}
+
+/* Inline "M" badge, placed right after a modified item's title — see
+   spec/xtdraft-format.md, "Modified fields". Click opens the metadata
+   popup below (`openMetadataPopup` in webview-src/index.ts). */
+.xtform-modified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: var(--vscode-gitDecoration-modifiedResourceForeground, #d29922);
+  color: #1a1a1a;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--vscode-font-family);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.xtform-modified-badge:hover {
+  opacity: 0.85;
+}
+
+/* Metadata popup — click-to-open (not hover), anchored to and positioned
+   just under its badge by JS (`positionPopupNearAnchor` in
+   webview-src/index.ts), built fresh on each open and appended to
+   `document.body`. */
+.xtform-metadata-popup {
+  position: fixed;
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 460px;
+  background: var(--vscode-editorWidget-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+}
+
+.xtform-metadata-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  font-family: var(--vscode-font-family);
+  font-weight: 600;
+}
+
+.xtform-metadata-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xtform-metadata-close {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xtform-metadata-close:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+}
+
+.xtform-metadata-body {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 10px;
+}
+
+.xtform-metadata-row {
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.xtform-metadata-row:not(:last-child) {
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.xtform-metadata-row:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.xtform-metadata-key {
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 2px;
+}
+
+.xtform-metadata-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.xtform-diff-arrow {
+  color: var(--vscode-descriptionForeground);
+}
+
+/* Selected (the value that will be written on Apply) vs. struck-through
+   (the value that won't) — see spec/xtdraft-format.md, "Modified fields":
+   default selection is the current/proposed value; clicking a row toggles
+   to the previous value. */
+.xtform-diff-selected {
+  color: var(--vscode-editor-foreground);
+}
+
+.xtform-diff-struck {
+  color: var(--vscode-descriptionForeground);
+  text-decoration: line-through;
+}
+
+.xtform-metadata-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.xtform-metadata-apply,
+.xtform-metadata-cancel {
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.xtform-metadata-apply {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border-color: transparent;
+}
+
+.xtform-metadata-apply:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.xtform-metadata-cancel {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.xtform-metadata-cancel:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
 }

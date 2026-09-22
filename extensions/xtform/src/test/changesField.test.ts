@@ -9,7 +9,9 @@ import {
   serializeXtformDocument,
   updateNodeValue,
   deleteNode,
-  addNode
+  addNode,
+  applyModifiedField,
+  cancelModifiedField
 } from '../parsers/yamlParser';
 import { XtformDocument } from '../parsers/xtformDocument';
 
@@ -158,6 +160,155 @@ items:
       assert.ok(yaml.includes('changes.kind'));
       assert.ok(yaml.includes('changes.status'));
       assert.ok(yaml.includes('instructions.on_change'));
+    });
+  });
+
+  suite('modified status and changes.prev (spec/xtdraft-format.md "Modified fields")', () => {
+    function makeDocWithModifiedItem(): XtformDocument {
+      return parseXtformDocument(`
+type: Form
+uuid: "form-001"
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Model Name"
+    description: "Django model class name, PascalCase, singular noun"
+    instructions.on_change: "Rename model class in models.py and all related imports"
+    value: "BlogPost"
+    changes.status: "modified"
+    changes.prev:
+      label: "Name"
+      description: ""
+      instructions.on_change: ""
+`);
+    }
+
+    test('unflattens changes.status: modified and changes.prev, including its own dotted instructions key', () => {
+      const doc = makeDocWithModifiedItem();
+      const item = doc.items!.find(i => i.uuid === 'f-001')!;
+
+      assert.strictEqual(item.changes?.status, 'modified');
+      assert.deepStrictEqual(item.changes?.prev, {
+        label: 'Name',
+        description: '',
+        instructions: { on_change: '' }
+      });
+    });
+
+    test('leaves value out of changes.prev when unchanged', () => {
+      const doc = makeDocWithModifiedItem();
+      const item = doc.items!.find(i => i.uuid === 'f-001')!;
+
+      assert.strictEqual(item.value, 'BlogPost');
+      assert.strictEqual(item.changes?.prev?.value, undefined);
+    });
+
+    test('round-trips modified status and changes.prev, including nested instructions', () => {
+      const doc = makeDocWithModifiedItem();
+      const reparsed = parseXtformDocument(serializeXtformDocument(doc));
+      const item = reparsed.items!.find(i => i.uuid === 'f-001')!;
+
+      assert.deepStrictEqual(item.changes, doc.items!.find(i => i.uuid === 'f-001')!.changes);
+    });
+
+    test('serializes changes.prev.instructions back to a flat dotted key', () => {
+      const doc = makeDocWithModifiedItem();
+      const yaml = serializeXtformDocument(doc);
+
+      assert.ok(yaml.includes('changes.status'));
+      assert.ok(yaml.includes('changes.prev'));
+      assert.ok(yaml.includes('instructions.on_change'));
+    });
+
+    test('applyModifiedField writes the given values and clears changes', () => {
+      const doc = makeDocWithModifiedItem();
+
+      const updated = applyModifiedField(doc, 'f-001', {
+        label: 'Model Name',
+        description: 'Django model class name, PascalCase, singular noun',
+        'instructions.on_change': 'Rename model class in models.py and all related imports'
+      });
+      const item = updated.items!.find(i => i.uuid === 'f-001')!;
+
+      assert.strictEqual(item.label, 'Model Name');
+      assert.strictEqual(item.description, 'Django model class name, PascalCase, singular noun');
+      assert.deepStrictEqual(item.instructions, {
+        on_change: 'Rename model class in models.py and all related imports'
+      });
+      assert.strictEqual(item.value, 'BlogPost');
+      assert.strictEqual(item.changes, undefined);
+    });
+
+    test('applyModifiedField can write a mix of prev and current values per field', () => {
+      const doc = makeDocWithModifiedItem();
+
+      // Simulates the user toggling only `label` back to its prev value in
+      // the metadata popup, leaving description/instructions at current.
+      const updated = applyModifiedField(doc, 'f-001', {
+        label: 'Name',
+        description: 'Django model class name, PascalCase, singular noun',
+        'instructions.on_change': 'Rename model class in models.py and all related imports'
+      });
+      const item = updated.items!.find(i => i.uuid === 'f-001')!;
+
+      assert.strictEqual(item.label, 'Name');
+      assert.strictEqual(item.description, 'Django model class name, PascalCase, singular noun');
+      assert.strictEqual(item.changes, undefined);
+    });
+
+    test('cancelModifiedField reverts every field to changes.prev and clears changes', () => {
+      const doc = makeDocWithModifiedItem();
+
+      const updated = cancelModifiedField(doc, 'f-001');
+      const item = updated.items!.find(i => i.uuid === 'f-001')!;
+
+      assert.strictEqual(item.label, 'Name');
+      assert.strictEqual(item.description, '');
+      assert.deepStrictEqual(item.instructions, { on_change: '' });
+      assert.strictEqual(item.value, 'BlogPost');
+      assert.strictEqual(item.changes, undefined);
+    });
+
+    test('cancelModifiedField on an item with no changes.prev only clears changes', () => {
+      const doc = parseXtformDocument(`
+type: Form
+uuid: "form-001"
+items:
+  - type: TextInput
+    uuid: "f-005"
+    label: "Untouched Label"
+    changes.status: "modified"
+`);
+
+      const updated = cancelModifiedField(doc, 'f-005');
+      const item = updated.items!.find(i => i.uuid === 'f-005')!;
+
+      assert.strictEqual(item.label, 'Untouched Label');
+      assert.strictEqual(item.changes, undefined);
+    });
+
+    test('applyModifiedField/cancelModifiedField leave sibling items untouched', () => {
+      const doc = parseXtformDocument(`
+type: Form
+uuid: "form-001"
+items:
+  - type: TextInput
+    uuid: "f-001"
+    label: "Model Name"
+    value: "BlogPost"
+    changes.status: "modified"
+    changes.prev:
+      label: "Name"
+  - type: TextInput
+    uuid: "f-002"
+    label: "Untouched"
+    changes.status: added
+`);
+
+      const updated = applyModifiedField(doc, 'f-001', { label: 'Model Name' });
+      const sibling = updated.items!.find(i => i.uuid === 'f-002')!;
+
+      assert.deepStrictEqual(sibling.changes, { status: 'added' });
     });
   });
 

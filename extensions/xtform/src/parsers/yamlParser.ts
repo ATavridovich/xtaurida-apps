@@ -18,16 +18,12 @@ const DOTTED_KEY_PREFIXES = ['instructions', 'changes'] as const;
 
 /**
  * Converts flat dotted keys (`instructions.on_change`, `changes.data.on_add`)
- * found on a freshly-parsed YAML node into the nested `node.instructions` /
- * `node.changes` objects the rest of the codebase expects. Mutates in place
- * and recurses into `items`.
- *
- * Exported so the webview (`webview-src/index.ts`), which parses `.xtform`
- * YAML independently for rendering, can apply the same conversion instead of
- * duplicating it.
+ * found directly on a freshly-parsed YAML object into the nested
+ * `instructions` / `changes` sub-objects the rest of the codebase expects.
+ * Mutates in place; does not recurse.
  */
-export function unflattenNode(node: Record<string, any>): void {
-  for (const key of Object.keys(node)) {
+function unflattenObjectKeys(obj: Record<string, any>): void {
+  for (const key of Object.keys(obj)) {
     const dotIndex = key.indexOf('.');
     if (dotIndex === -1) {
       continue;
@@ -39,11 +35,46 @@ export function unflattenNode(node: Record<string, any>): void {
     }
 
     const rest = key.substring(dotIndex + 1);
-    if (!node[prefix] || typeof node[prefix] !== 'object') {
-      node[prefix] = {};
+    if (!obj[prefix] || typeof obj[prefix] !== 'object') {
+      obj[prefix] = {};
     }
-    node[prefix][rest] = node[key];
-    delete node[key];
+    obj[prefix][rest] = obj[key];
+    delete obj[key];
+  }
+}
+
+/**
+ * Reverse of `unflattenObjectKeys` — expands an object's `instructions` /
+ * `changes` sub-objects back into flat dotted sibling keys. Mutates in
+ * place; does not recurse.
+ */
+function flattenObjectKeys(obj: Record<string, any>): void {
+  for (const prefix of DOTTED_KEY_PREFIXES) {
+    const value = obj[prefix];
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const [key, val] of Object.entries(value)) {
+        obj[`${prefix}.${key}`] = val;
+      }
+      delete obj[prefix];
+    }
+  }
+}
+
+/**
+ * Applies `unflattenObjectKeys` to a node and, recursively, to every node in
+ * its `items`. A `modified` item's `changes.prev` snapshot carries its own
+ * dotted `instructions.*` keys (see spec/xtdraft-format.md, "Modified
+ * fields") and is unflattened the same way.
+ *
+ * Exported so the webview (`webview-src/index.ts`), which parses `.xtform`
+ * YAML independently for rendering, can apply the same conversion instead of
+ * duplicating it.
+ */
+export function unflattenNode(node: Record<string, any>): void {
+  unflattenObjectKeys(node);
+
+  if (node.changes?.prev && typeof node.changes.prev === 'object') {
+    unflattenObjectKeys(node.changes.prev);
   }
 
   if (Array.isArray(node.items)) {
@@ -57,20 +88,17 @@ export function unflattenNode(node: Record<string, any>): void {
 
 /**
  * Reverse of `unflattenNode` — expands `node.instructions` / `node.changes`
- * back into flat dotted keys before serializing to YAML, so the on-disk
- * format matches spec/xtform-format.md / spec/xtdraft-format.md. Mutates in
- * place and recurses into `items`.
+ * (and a `modified` item's `changes.prev.instructions`) back into flat
+ * dotted keys before serializing to YAML, so the on-disk format matches
+ * spec/xtform-format.md / spec/xtdraft-format.md. Mutates in place and
+ * recurses into `items`.
  */
 function flattenNode(node: Record<string, any>): void {
-  for (const prefix of DOTTED_KEY_PREFIXES) {
-    const value = node[prefix];
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      for (const [key, val] of Object.entries(value)) {
-        node[`${prefix}.${key}`] = val;
-      }
-      delete node[prefix];
-    }
+  if (node.changes?.prev && typeof node.changes.prev === 'object') {
+    flattenObjectKeys(node.changes.prev);
   }
+
+  flattenObjectKeys(node);
 
   if (Array.isArray(node.items)) {
     for (const child of node.items) {
@@ -179,6 +207,30 @@ export function updateNodeValue(doc: XtformDocument, uuid: string, value: any): 
 }
 
 /**
+ * Sets a single property on an already-found node, understanding the same
+ * 'instructions.*' / 'changes.*' dotted notation as the on-disk format (see
+ * `unflattenNode`). Shared by `updateNodeProperty` and the modified-field
+ * mutators below.
+ */
+function setNodeProperty(node: Record<string, any>, property: string, value: any): void {
+  if (property.startsWith('instructions.')) {
+    const key = property.substring('instructions.'.length);
+    if (!node.instructions) {
+      node.instructions = {};
+    }
+    node.instructions[key] = value;
+  } else if (property.startsWith('changes.')) {
+    const key = property.substring('changes.'.length);
+    if (!node.changes) {
+      node.changes = {};
+    }
+    node.changes[key] = value;
+  } else {
+    node[property] = value;
+  }
+}
+
+/**
  * Updates any property of a node
  *
  * @param doc - XtformDocument to update
@@ -197,22 +249,7 @@ export function updateNodeProperty(
 
   function findAndUpdate(node: XtformNode | XtformDocument): boolean {
     if (node.uuid === uuid) {
-      // Handle instructions.* and changes.* properties
-      if (property.startsWith('instructions.')) {
-        const key = property.substring('instructions.'.length);
-        if (!node.instructions) {
-          node.instructions = {};
-        }
-        node.instructions[key] = value;
-      } else if (property.startsWith('changes.')) {
-        const key = property.substring('changes.'.length);
-        if (!node.changes) {
-          (node as any).changes = {};
-        }
-        (node as any).changes[key] = value;
-      } else {
-        (node as any)[property] = value;
-      }
+      setNodeProperty(node, property, value);
       return true;
     }
 
@@ -228,6 +265,98 @@ export function updateNodeProperty(
   }
 
   findAndUpdate(newDoc);
+  bumpRevision(newDoc);
+  return newDoc;
+}
+
+/**
+ * Applies a `modified` item's resolved per-field selection — from the
+ * Viewer's metadata popup, see spec/xtdraft-format.md ("Modified fields") —
+ * and clears its `changes`. This is a mechanical write owned by the Viewer
+ * itself, unlike the form-level "Apply all"/"Cancel" toolbar, which is an
+ * Agent command (spec/xtdraft-format.md, "Toolbar").
+ *
+ * @param doc - XtformDocument to update
+ * @param uuid - UUID of the modified node
+ * @param values - Field key → resolved value (already chosen between prev/current by the Viewer); keys use the same 'instructions.*' notation as `updateNodeProperty`
+ * @returns Updated XtformDocument
+ */
+export function applyModifiedField(
+  doc: XtformDocument,
+  uuid: string,
+  values: Record<string, any>
+): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  function findAndApply(node: XtformNode | XtformDocument): boolean {
+    if (node.uuid === uuid) {
+      for (const [key, value] of Object.entries(values)) {
+        setNodeProperty(node, key, value);
+      }
+      delete (node as any).changes;
+      return true;
+    }
+
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        if (findAndApply(child)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  findAndApply(newDoc);
+  bumpRevision(newDoc);
+  return newDoc;
+}
+
+/**
+ * Reverts a `modified` item to its `changes.prev` snapshot and clears
+ * `changes` — see spec/xtdraft-format.md ("Modified fields", Cancel). A
+ * no-op (besides clearing `changes`) if the item has no `changes.prev`.
+ * Like `applyModifiedField`, this is a mechanical write owned by the
+ * Viewer, not an Agent command.
+ *
+ * @param doc - XtformDocument to update
+ * @param uuid - UUID of the modified node
+ * @returns Updated XtformDocument
+ */
+export function cancelModifiedField(doc: XtformDocument, uuid: string): XtformDocument {
+  const newDoc = JSON.parse(JSON.stringify(doc)); // Deep clone
+
+  function findAndCancel(node: XtformNode | XtformDocument): boolean {
+    if (node.uuid === uuid) {
+      const prev = (node as XtformNode).changes?.prev;
+      if (prev) {
+        for (const [key, value] of Object.entries(prev)) {
+          if (key === 'instructions' && value && typeof value === 'object') {
+            for (const [instructionKey, instructionValue] of Object.entries(value as Record<string, unknown>)) {
+              setNodeProperty(node, `instructions.${instructionKey}`, instructionValue);
+            }
+          } else {
+            setNodeProperty(node, key, value);
+          }
+        }
+      }
+      delete (node as any).changes;
+      return true;
+    }
+
+    if (node.items && Array.isArray(node.items)) {
+      for (const child of node.items) {
+        if (findAndCancel(child)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  findAndCancel(newDoc);
   bumpRevision(newDoc);
   return newDoc;
 }

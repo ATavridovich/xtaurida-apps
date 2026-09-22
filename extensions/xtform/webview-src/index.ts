@@ -13,10 +13,24 @@ interface XtformRootChanges {
   kind: string;
 }
 
+// Snapshot of a node's previous field values, carried on `changes.prev` for
+// a `modified` item — see spec/xtdraft-format.md ("Modified fields"). Only
+// fields that actually changed are present.
+interface XtformItemChangesPrev {
+  label?: string;
+  description?: string;
+  value?: any;
+  options?: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+  instructions?: Record<string, string>;
+}
+
 // Marks an individual item as part of a pending draft proposal — see
 // spec/xtdraft-format.md ("Rendering", "Field buttons").
 interface XtformItemChanges {
-  status: 'added' | 'removed';
+  status: 'added' | 'removed' | 'modified';
+  prev?: XtformItemChangesPrev;
 }
 
 interface XtformNode {
@@ -289,6 +303,10 @@ let applyAction: QuickAction | null = null;
 // dispatched the same way as `runCommand` above. Whether the draft toolbar
 // or a given field's buttons actually render is decided purely from the
 // document's own `changes` fields in renderForm()/renderNode(), not here.
+//
+// The modified-field metadata popup's own Apply/Cancel (spec/xtdraft-
+// format.md, "Modified fields") are NOT Agent commands — see
+// `sendApplyModifiedField`/`sendCancelModifiedField`.
 
 interface DraftActions {
   applyAll?: string;
@@ -355,12 +373,16 @@ function draftStatusClass(node: XtformNode): string {
   switch (node.changes?.status) {
     case 'added': return ' xtform-draft-added';
     case 'removed': return ' xtform-draft-removed';
+    case 'modified': return ' xtform-draft-modified';
     default: return '';
   }
 }
 
 function draftButtonsHtml(node: XtformNode): string {
-  if (!node.changes?.status) {
+  // `modified` items get their own Apply/Cancel inside the metadata popup
+  // (`openMetadataPopup`) instead — see spec/xtdraft-format.md ("Modified
+  // fields").
+  if (!node.changes?.status || node.changes.status === 'modified') {
     return '';
   }
 
@@ -381,6 +403,196 @@ function draftButtonsHtml(node: XtformNode): string {
       ${rejectBtn}
     </div>
   `;
+}
+
+// A `modified` item is highlighted yellow (`draftStatusClass`) and carries
+// a small "M" badge right after its title (`draftModifiedBadgeHtml`, wired
+// into each render*() function's label markup). Clicking it opens the
+// metadata popup (`openMetadataPopup`) — see spec/xtdraft-format.md
+// ("Modified fields"): a small dialog, built fresh each time and appended
+// to `document.body` (not pre-rendered as part of the form, since its
+// per-field selection state is local and resets every time it's opened),
+// listing every field `changes.prev` carries a previous value for as a
+// clickable prev/current toggle (default: current/proposed). Unlike the
+// form-level "Apply all"/"Cancel" toolbar (an Agent command), this Apply/
+// Cancel is a mechanical write/revert this extension performs itself — see
+// `sendApplyModifiedField`/`sendCancelModifiedField`.
+
+const MODIFIED_DIFF_FIELD_ORDER = ['label', 'description', 'options', 'width', 'align'] as const;
+
+interface ModifiedEntry {
+  key: string;
+  prevValue: unknown;
+  currValue: unknown;
+}
+
+function formatDiffValue(value: unknown): string {
+  if (value === undefined || value === null || value === '') {
+    return '""';
+  }
+  return typeof value === 'string' ? `"${value}"` : String(value);
+}
+
+// Every field with a previous value in `changes.prev` — the set the
+// metadata popup shows, one toggle row each.
+function getModifiedEntries(node: XtformNode): ModifiedEntry[] {
+  const prev = node.changes?.prev;
+  if (!prev) {
+    return [];
+  }
+
+  const entries: ModifiedEntry[] = [];
+
+  if ('value' in prev) {
+    entries.push({ key: 'value', prevValue: prev.value, currValue: node.value });
+  }
+
+  for (const key of MODIFIED_DIFF_FIELD_ORDER) {
+    if (key in prev) {
+      entries.push({ key, prevValue: prev[key], currValue: (node as Record<string, unknown>)[key] });
+    }
+  }
+
+  if (prev.instructions) {
+    for (const [key, prevValue] of Object.entries(prev.instructions)) {
+      entries.push({ key: `instructions.${key}`, prevValue, currValue: node.instructions?.[key] });
+    }
+  }
+
+  return entries;
+}
+
+// Inline "M" badge — see `openMetadataPopup` for what clicking it does.
+function draftModifiedBadgeHtml(node: XtformNode): string {
+  return node.changes?.status === 'modified'
+    ? ` <button type="button" class="xtform-modified-badge" data-uuid="${node.uuid}" title="Show changes">M</button>`
+    : '';
+}
+
+let openMetadataPopupEl: HTMLElement | null = null;
+
+function closeMetadataPopup(): void {
+  if (openMetadataPopupEl) {
+    openMetadataPopupEl.remove();
+    openMetadataPopupEl = null;
+  }
+}
+
+// Positions a popup just under its anchor, nudged back onto screen if it
+// would otherwise overflow the viewport. `popup` must already be in the DOM
+// when called, so its size can be measured.
+function positionPopupNearAnchor(popup: HTMLElement, anchor: HTMLElement): void {
+  const offset = 4;
+  const anchorRect = anchor.getBoundingClientRect();
+  const rect = popup.getBoundingClientRect();
+
+  let left = anchorRect.left;
+  let top = anchorRect.bottom + offset;
+
+  if (left + rect.width > window.innerWidth) {
+    left = Math.max(0, window.innerWidth - rect.width - offset);
+  }
+  if (top + rect.height > window.innerHeight) {
+    top = anchorRect.top - rect.height - offset;
+  }
+
+  popup.style.left = `${Math.max(0, left)}px`;
+  popup.style.top = `${Math.max(0, top)}px`;
+}
+
+function metadataRowContentHtml(entry: ModifiedEntry, selected: 'prev' | 'curr'): string {
+  const prevClass = selected === 'prev' ? 'xtform-diff-selected' : 'xtform-diff-struck';
+  const currClass = selected === 'curr' ? 'xtform-diff-selected' : 'xtform-diff-struck';
+  return `
+    <div class="xtform-metadata-key">${escapeHtml(entry.key)}</div>
+    <div class="xtform-metadata-values">
+      <span class="${prevClass}">${escapeHtml(formatDiffValue(entry.prevValue))}</span>
+      <span class="xtform-diff-arrow">→</span>
+      <span class="${currClass}">${escapeHtml(formatDiffValue(entry.currValue))}</span>
+    </div>
+  `;
+}
+
+// Builds and opens the metadata popup for a modified node, anchored to the
+// badge that triggered it. Selection state (which value — prev or current —
+// each field is currently toggled to) lives only in this closure and is
+// discarded when the popup closes, per spec/xtdraft-format.md ("Modified
+// fields": "Click selections reset on next open").
+function openMetadataPopup(node: XtformNode, anchor: HTMLElement): void {
+  closeMetadataPopup();
+
+  const entries = getModifiedEntries(node);
+  if (!entries.length) {
+    return;
+  }
+
+  const selections: Record<string, 'prev' | 'curr'> = {};
+  for (const entry of entries) {
+    selections[entry.key] = 'curr';
+  }
+
+  const popup = document.createElement('div');
+  popup.className = 'xtform-metadata-popup';
+  popup.addEventListener('click', (e) => e.stopPropagation());
+
+  const title = node.label || node.type;
+  popup.innerHTML = `
+    <div class="xtform-metadata-header">
+      <span class="xtform-metadata-title">Changes — "${escapeHtml(title)}"</span>
+      <button type="button" class="xtform-metadata-close" title="Close">×</button>
+    </div>
+    <div class="xtform-metadata-body">
+      ${entries.map(() => '<div class="xtform-metadata-row"></div>').join('')}
+    </div>
+    <div class="xtform-metadata-footer">
+      <button type="button" class="xtform-metadata-apply">Apply</button>
+      <button type="button" class="xtform-metadata-cancel">Cancel</button>
+    </div>
+  `;
+
+  const rowEls = Array.from(popup.querySelectorAll<HTMLElement>('.xtform-metadata-row'));
+  entries.forEach((entry, i) => {
+    const rowEl = rowEls[i];
+    rowEl.innerHTML = metadataRowContentHtml(entry, selections[entry.key]);
+    rowEl.addEventListener('click', () => {
+      selections[entry.key] = selections[entry.key] === 'curr' ? 'prev' : 'curr';
+      rowEl.innerHTML = metadataRowContentHtml(entry, selections[entry.key]);
+    });
+  });
+
+  popup.querySelector('.xtform-metadata-close')?.addEventListener('click', () => closeMetadataPopup());
+
+  popup.querySelector('.xtform-metadata-apply')?.addEventListener('click', () => {
+    const values: Record<string, unknown> = {};
+    for (const entry of entries) {
+      values[entry.key] = selections[entry.key] === 'prev' ? entry.prevValue : entry.currValue;
+    }
+    sendApplyModifiedField(node.uuid, values);
+    closeMetadataPopup();
+  });
+
+  popup.querySelector('.xtform-metadata-cancel')?.addEventListener('click', () => {
+    sendCancelModifiedField(node.uuid);
+    closeMetadataPopup();
+  });
+
+  document.body.appendChild(popup);
+  positionPopupNearAnchor(popup, anchor);
+  openMetadataPopupEl = popup;
+}
+
+function setupModifiedBadges(): void {
+  document.querySelectorAll<HTMLButtonElement>('.xtform-modified-badge').forEach(badge => {
+    badge.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const uuid = badge.getAttribute('data-uuid');
+      const node = uuid && currentDoc ? findNode(currentDoc, uuid) : null;
+      if (node && node.type !== 'Form') {
+        openMetadataPopup(node as XtformNode, badge);
+      }
+    });
+  });
 }
 
 function renderNode(node: XtformNode): string {
@@ -412,7 +624,7 @@ function renderTextInput(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
         type="text"
@@ -428,7 +640,7 @@ function renderTextArea(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <textarea
         class="xtform-textarea"
@@ -442,7 +654,7 @@ function renderIntegerInput(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
         type="number"
@@ -459,7 +671,7 @@ function renderDecimalInput(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
         type="number"
@@ -485,7 +697,7 @@ function renderCheckbox(node: XtformNode): string {
           data-uuid="${node.uuid}"
           ${checked}
         />
-        ${node.label ? escapeHtml(node.label) : 'Checkbox'}
+        ${node.label ? escapeHtml(node.label) : 'Checkbox'}${draftModifiedBadgeHtml(node)}
       </label>
     </div>
   `;
@@ -495,7 +707,7 @@ function renderDatePicker(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
         type="date"
@@ -511,7 +723,7 @@ function renderTimePicker(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <input
         type="time"
@@ -532,7 +744,7 @@ function renderSelect(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <select class="xtform-select" data-uuid="${node.uuid}">
         ${optionsHtml}
@@ -563,7 +775,7 @@ function renderRadioGroup(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <div class="xtform-radio-group">
         ${optionsHtml}
@@ -580,7 +792,7 @@ function renderSection(node: XtformNode): string {
   return `
     <div class="xtform-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}</h2>` : ''}
+      ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</h2>` : ''}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -595,7 +807,7 @@ function renderCollapsibleSection(node: XtformNode): string {
 
   return `
     <details class="xtform-collapsible-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}" open>
-      <summary>${node.label ? escapeHtml(node.label) : 'Collapsible Section'}</summary>
+      <summary>${node.label ? escapeHtml(node.label) : 'Collapsible Section'}${draftModifiedBadgeHtml(node)}</summary>
       ${draftButtonsHtml(node)}
       <div class="xtform-section-content">
         ${childrenHtml}
@@ -612,7 +824,7 @@ function renderTab(node: XtformNode): string {
   return `
     <div class="xtform-tab xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : 'Tab'}</div>
+      <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : 'Tab'}${draftModifiedBadgeHtml(node)}</div>
       <div class="xtform-tab-content">
         ${childrenHtml}
       </div>
@@ -676,7 +888,7 @@ function renderTable(node: XtformNode): string {
   return `
     <div class="xtform-field xtform-table xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ''}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ''}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <table class="xtform-table-grid" data-table-uuid="${node.uuid}">
         <thead>
@@ -879,6 +1091,10 @@ function setupEventListeners(): void {
       }
     });
   });
+
+  // Modified-field "M" badge — opens the metadata popup (Apply/Cancel
+  // inside it are wired at creation time in `openMetadataPopup`, not here)
+  setupModifiedBadges();
 
   // Draft toolbar: Apply all / Cancel — Agent commands (spec/xtdraft-format.md)
   document.querySelectorAll('.xtform-draft-apply-all').forEach(btn => {
@@ -1221,6 +1437,24 @@ function sendUpdateProperty(uuid: string, property: string, value: any): void {
   });
 }
 
+// Metadata popup Apply/Cancel (spec/xtdraft-format.md, "Modified fields") —
+// unlike `sendRunCommand`, these are handled directly by this extension
+// (`xtformEditorProvider.ts`), not dispatched to an external Agent command.
+function sendApplyModifiedField(uuid: string, values: Record<string, unknown>): void {
+  vscode.postMessage({
+    type: 'applyModifiedField',
+    uuid,
+    values
+  });
+}
+
+function sendCancelModifiedField(uuid: string): void {
+  vscode.postMessage({
+    type: 'cancelModifiedField',
+    uuid
+  });
+}
+
 function sendAddComponent(parentUuid: string | null, node: XtformNode): void {
   vscode.postMessage({
     type: 'addComponent',
@@ -1380,8 +1614,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Setup property editor collapse
   setupPropertyEditorCollapse();
 
-  // Close the quick actions menu when clicking anywhere outside it
-  document.addEventListener('click', () => closeQuickMenu());
+  // Close the quick actions menu / an open metadata popup when clicking
+  // anywhere outside it
+  document.addEventListener('click', () => {
+    closeQuickMenu();
+    closeMetadataPopup();
+  });
 
   // Signal ready to extension
   vscode.postMessage({ type: 'ready' });

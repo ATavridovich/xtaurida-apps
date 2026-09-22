@@ -6259,8 +6259,8 @@ ${end.comment}` : end.comment;
 
   // src/parsers/yamlParser.ts
   var DOTTED_KEY_PREFIXES = ["instructions", "changes"];
-  function unflattenNode(node) {
-    for (const key of Object.keys(node)) {
+  function unflattenObjectKeys(obj) {
+    for (const key of Object.keys(obj)) {
       const dotIndex = key.indexOf(".");
       if (dotIndex === -1) {
         continue;
@@ -6270,11 +6270,17 @@ ${end.comment}` : end.comment;
         continue;
       }
       const rest = key.substring(dotIndex + 1);
-      if (!node[prefix] || typeof node[prefix] !== "object") {
-        node[prefix] = {};
+      if (!obj[prefix] || typeof obj[prefix] !== "object") {
+        obj[prefix] = {};
       }
-      node[prefix][rest] = node[key];
-      delete node[key];
+      obj[prefix][rest] = obj[key];
+      delete obj[key];
+    }
+  }
+  function unflattenNode(node) {
+    unflattenObjectKeys(node);
+    if (node.changes?.prev && typeof node.changes.prev === "object") {
+      unflattenObjectKeys(node.changes.prev);
     }
     if (Array.isArray(node.items)) {
       for (const child of node.items) {
@@ -6519,12 +6525,14 @@ ${end.comment}` : end.comment;
         return " xtform-draft-added";
       case "removed":
         return " xtform-draft-removed";
+      case "modified":
+        return " xtform-draft-modified";
       default:
         return "";
     }
   }
   function draftButtonsHtml(node) {
-    if (!node.changes?.status) {
+    if (!node.changes?.status || node.changes.status === "modified") {
       return "";
     }
     const acceptBtn = draftActions.fieldAccept ? `<button class="xtform-draft-accept" data-uuid="${node.uuid}" title="Accept">\u2713</button>` : "";
@@ -6538,6 +6546,137 @@ ${end.comment}` : end.comment;
       ${rejectBtn}
     </div>
   `;
+  }
+  var MODIFIED_DIFF_FIELD_ORDER = ["label", "description", "options", "width", "align"];
+  function formatDiffValue(value) {
+    if (value === void 0 || value === null || value === "") {
+      return '""';
+    }
+    return typeof value === "string" ? `"${value}"` : String(value);
+  }
+  function getModifiedEntries(node) {
+    const prev = node.changes?.prev;
+    if (!prev) {
+      return [];
+    }
+    const entries = [];
+    if ("value" in prev) {
+      entries.push({ key: "value", prevValue: prev.value, currValue: node.value });
+    }
+    for (const key of MODIFIED_DIFF_FIELD_ORDER) {
+      if (key in prev) {
+        entries.push({ key, prevValue: prev[key], currValue: node[key] });
+      }
+    }
+    if (prev.instructions) {
+      for (const [key, prevValue] of Object.entries(prev.instructions)) {
+        entries.push({ key: `instructions.${key}`, prevValue, currValue: node.instructions?.[key] });
+      }
+    }
+    return entries;
+  }
+  function draftModifiedBadgeHtml(node) {
+    return node.changes?.status === "modified" ? ` <button type="button" class="xtform-modified-badge" data-uuid="${node.uuid}" title="Show changes">M</button>` : "";
+  }
+  var openMetadataPopupEl = null;
+  function closeMetadataPopup() {
+    if (openMetadataPopupEl) {
+      openMetadataPopupEl.remove();
+      openMetadataPopupEl = null;
+    }
+  }
+  function positionPopupNearAnchor(popup, anchor) {
+    const offset = 4;
+    const anchorRect = anchor.getBoundingClientRect();
+    const rect = popup.getBoundingClientRect();
+    let left = anchorRect.left;
+    let top = anchorRect.bottom + offset;
+    if (left + rect.width > window.innerWidth) {
+      left = Math.max(0, window.innerWidth - rect.width - offset);
+    }
+    if (top + rect.height > window.innerHeight) {
+      top = anchorRect.top - rect.height - offset;
+    }
+    popup.style.left = `${Math.max(0, left)}px`;
+    popup.style.top = `${Math.max(0, top)}px`;
+  }
+  function metadataRowContentHtml(entry, selected) {
+    const prevClass = selected === "prev" ? "xtform-diff-selected" : "xtform-diff-struck";
+    const currClass = selected === "curr" ? "xtform-diff-selected" : "xtform-diff-struck";
+    return `
+    <div class="xtform-metadata-key">${escapeHtml(entry.key)}</div>
+    <div class="xtform-metadata-values">
+      <span class="${prevClass}">${escapeHtml(formatDiffValue(entry.prevValue))}</span>
+      <span class="xtform-diff-arrow">\u2192</span>
+      <span class="${currClass}">${escapeHtml(formatDiffValue(entry.currValue))}</span>
+    </div>
+  `;
+  }
+  function openMetadataPopup(node, anchor) {
+    closeMetadataPopup();
+    const entries = getModifiedEntries(node);
+    if (!entries.length) {
+      return;
+    }
+    const selections = {};
+    for (const entry of entries) {
+      selections[entry.key] = "curr";
+    }
+    const popup = document.createElement("div");
+    popup.className = "xtform-metadata-popup";
+    popup.addEventListener("click", (e) => e.stopPropagation());
+    const title = node.label || node.type;
+    popup.innerHTML = `
+    <div class="xtform-metadata-header">
+      <span class="xtform-metadata-title">Changes \u2014 "${escapeHtml(title)}"</span>
+      <button type="button" class="xtform-metadata-close" title="Close">\xD7</button>
+    </div>
+    <div class="xtform-metadata-body">
+      ${entries.map(() => '<div class="xtform-metadata-row"></div>').join("")}
+    </div>
+    <div class="xtform-metadata-footer">
+      <button type="button" class="xtform-metadata-apply">Apply</button>
+      <button type="button" class="xtform-metadata-cancel">Cancel</button>
+    </div>
+  `;
+    const rowEls = Array.from(popup.querySelectorAll(".xtform-metadata-row"));
+    entries.forEach((entry, i) => {
+      const rowEl = rowEls[i];
+      rowEl.innerHTML = metadataRowContentHtml(entry, selections[entry.key]);
+      rowEl.addEventListener("click", () => {
+        selections[entry.key] = selections[entry.key] === "curr" ? "prev" : "curr";
+        rowEl.innerHTML = metadataRowContentHtml(entry, selections[entry.key]);
+      });
+    });
+    popup.querySelector(".xtform-metadata-close")?.addEventListener("click", () => closeMetadataPopup());
+    popup.querySelector(".xtform-metadata-apply")?.addEventListener("click", () => {
+      const values = {};
+      for (const entry of entries) {
+        values[entry.key] = selections[entry.key] === "prev" ? entry.prevValue : entry.currValue;
+      }
+      sendApplyModifiedField(node.uuid, values);
+      closeMetadataPopup();
+    });
+    popup.querySelector(".xtform-metadata-cancel")?.addEventListener("click", () => {
+      sendCancelModifiedField(node.uuid);
+      closeMetadataPopup();
+    });
+    document.body.appendChild(popup);
+    positionPopupNearAnchor(popup, anchor);
+    openMetadataPopupEl = popup;
+  }
+  function setupModifiedBadges() {
+    document.querySelectorAll(".xtform-modified-badge").forEach((badge) => {
+      badge.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const uuid = badge.getAttribute("data-uuid");
+        const node = uuid && currentDoc ? findNode(currentDoc, uuid) : null;
+        if (node && node.type !== "Form") {
+          openMetadataPopup(node, badge);
+        }
+      });
+    });
   }
   function renderNode(node) {
     const handlers = {
@@ -6565,7 +6704,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
         type="text"
@@ -6580,7 +6719,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <textarea
         class="xtform-textarea"
@@ -6593,7 +6732,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
         type="number"
@@ -6609,7 +6748,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
         type="number"
@@ -6634,7 +6773,7 @@ ${end.comment}` : end.comment;
           data-uuid="${node.uuid}"
           ${checked}
         />
-        ${node.label ? escapeHtml(node.label) : "Checkbox"}
+        ${node.label ? escapeHtml(node.label) : "Checkbox"}${draftModifiedBadgeHtml(node)}
       </label>
     </div>
   `;
@@ -6643,7 +6782,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
         type="date"
@@ -6658,7 +6797,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <input
         type="time"
@@ -6677,7 +6816,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <select class="xtform-select" data-uuid="${node.uuid}">
         ${optionsHtml}
@@ -6706,7 +6845,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <div class="xtform-radio-group">
         ${optionsHtml}
@@ -6719,7 +6858,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}</h2>` : ""}
+      ${node.label ? `<h2 class="xtform-section-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</h2>` : ""}
       <div class="xtform-section-content">
         ${childrenHtml}
       </div>
@@ -6730,7 +6869,7 @@ ${end.comment}` : end.comment;
     const childrenHtml = node.items ? node.items.map((child) => renderNode(child)).join("\n") : "";
     return `
     <details class="xtform-collapsible-section xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}" open>
-      <summary>${node.label ? escapeHtml(node.label) : "Collapsible Section"}</summary>
+      <summary>${node.label ? escapeHtml(node.label) : "Collapsible Section"}${draftModifiedBadgeHtml(node)}</summary>
       ${draftButtonsHtml(node)}
       <div class="xtform-section-content">
         ${childrenHtml}
@@ -6743,7 +6882,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-tab xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : "Tab"}</div>
+      <div class="xtform-tab-label">${node.label ? escapeHtml(node.label) : "Tab"}${draftModifiedBadgeHtml(node)}</div>
       <div class="xtform-tab-content">
         ${childrenHtml}
       </div>
@@ -6797,7 +6936,7 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-field xtform-table xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
       ${draftButtonsHtml(node)}
-      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}</label>` : ""}
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftModifiedBadgeHtml(node)}</label>` : ""}
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <table class="xtform-table-grid" data-table-uuid="${node.uuid}">
         <thead>
@@ -6952,6 +7091,7 @@ ${end.comment}` : end.comment;
         }
       });
     });
+    setupModifiedBadges();
     document.querySelectorAll(".xtform-draft-apply-all").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -7228,6 +7368,19 @@ ${end.comment}` : end.comment;
       value
     });
   }
+  function sendApplyModifiedField(uuid, values) {
+    vscode.postMessage({
+      type: "applyModifiedField",
+      uuid,
+      values
+    });
+  }
+  function sendCancelModifiedField(uuid) {
+    vscode.postMessage({
+      type: "cancelModifiedField",
+      uuid
+    });
+  }
   function sendAddComponent(parentUuid, node) {
     vscode.postMessage({
       type: "addComponent",
@@ -7348,7 +7501,10 @@ ${end.comment}` : end.comment;
     });
     renderComponentPalette("inputs");
     setupPropertyEditorCollapse();
-    document.addEventListener("click", () => closeQuickMenu());
+    document.addEventListener("click", () => {
+      closeQuickMenu();
+      closeMetadataPopup();
+    });
     vscode.postMessage({ type: "ready" });
   });
 })();
