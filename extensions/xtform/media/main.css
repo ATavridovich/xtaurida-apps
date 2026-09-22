@@ -819,7 +819,7 @@ body {
   border: 1px solid var(--vscode-inputValidation-errorBorder);
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   opacity: 0.9;
 }
 
@@ -828,8 +828,14 @@ body {
   color: var(--vscode-button-secondaryForeground);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.btn-danger:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Form Preview (Right Panel) */
@@ -874,8 +880,8 @@ body {
 }
 
 .xtform-draft-modified {
-  background-color: rgba(210, 153, 34, 0.15);
-  border-left: 3px solid var(--vscode-gitDecoration-modifiedResourceForeground, #d29922);
+  background-color: rgba(204, 167, 0, 0.15);
+  border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700);
   padding-left: 9px;
 }
 
@@ -915,7 +921,7 @@ body {
 }
 
 .xtform-status-badge-modified {
-  background: var(--vscode-gitDecoration-modifiedResourceForeground, #d29922);
+  background: var(--vscode-editorWarning-foreground, #cca700);
 }
 
 /* Metadata popup — click-to-open (not hover), anchored to and positioned
@@ -1055,17 +1061,14 @@ body {
 }
 
 /* Added/removed status popup — click-to-open, anchored to and positioned
-   just under its "A"/"R" badge (see `.xtform-metadata-popup` above for the
-   same mechanics). Simpler than the metadata popup: just a title and
-   Accept/Reject — see spec/xtdraft-format.md ("Added / Removed"). */
+   just under its "A"/"R" badge. Header (title + × close) matches the
+   metadata popup's (`.xtform-metadata-header`/`-close` above); body is
+   simpler — just Accept/Reject — see spec/xtdraft-format.md
+   ("Added / Removed"). */
 .xtform-status-popup {
   position: fixed;
   z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
   min-width: 160px;
-  padding: 10px;
   background: var(--vscode-editorWidget-background);
   border: 1px solid var(--vscode-panel-border);
   border-radius: 3px;
@@ -1074,9 +1077,44 @@ body {
   font-size: 12px;
 }
 
-.xtform-status-popup-title {
+.xtform-status-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border);
   font-weight: 600;
-  margin-bottom: 2px;
+}
+
+.xtform-status-popup-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xtform-status-popup-close {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.xtform-status-popup-close:hover {
+  background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.1));
+}
+
+.xtform-status-popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
 }
 
 .xtform-status-popup-accept,

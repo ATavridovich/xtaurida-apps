@@ -585,9 +585,14 @@ function openAddedRemovedPopup(node: XtformNode, anchor: HTMLElement): void {
 
   const title = status === 'added' ? 'Added' : 'Removed';
   popup.innerHTML = `
-    <div class="xtform-status-popup-title">${escapeHtml(title)}</div>
-    <button type="button" class="xtform-status-popup-accept">Accept</button>
-    <button type="button" class="xtform-status-popup-reject">Reject</button>
+    <div class="xtform-status-popup-header">
+      <span class="xtform-status-popup-title">${escapeHtml(title)}</span>
+      <button type="button" class="xtform-status-popup-close" title="Close">×</button>
+    </div>
+    <div class="xtform-status-popup-body">
+      <button type="button" class="xtform-status-popup-accept">Accept</button>
+      <button type="button" class="xtform-status-popup-reject">Reject</button>
+    </div>
   `;
 
   popup.querySelector('.xtform-status-popup-accept')?.addEventListener('click', () => {
@@ -599,6 +604,9 @@ function openAddedRemovedPopup(node: XtformNode, anchor: HTMLElement): void {
     sendResolveAddedRemovedItem(node.uuid, 'reject');
     closeFieldPopup();
   });
+
+  // Close without action — same as clicking outside the popup
+  popup.querySelector('.xtform-status-popup-close')?.addEventListener('click', () => closeFieldPopup());
 
   document.body.appendChild(popup);
   positionPopupNearAnchor(popup, anchor);
@@ -1167,6 +1175,15 @@ function renderPropertyEditor(uuid: string): void {
     return;
   }
 
+  // Added/removed/modified components are resolved via their own status
+  // popup (spec/xtdraft-format.md, "Added / Removed", "Modified fields") —
+  // deleting or duplicating one here would bypass that and leave `changes`
+  // pointing at a stale or duplicated node.
+  const hasPendingChanges = node.type !== 'Form' && !!(node as XtformNode).changes?.status;
+  const pendingChangesTitle = hasPendingChanges
+    ? 'This component has pending changes — resolve them via its status badge first'
+    : '';
+
   const html = `
     <div class="property-form">
       <div class="property-section">
@@ -1223,8 +1240,8 @@ function renderPropertyEditor(uuid: string): void {
 
       ${node.type !== 'Form' ? `
       <div class="property-actions">
-        <button class="btn-danger" id="btn-delete">Delete Component</button>
-        <button class="btn-secondary" id="btn-duplicate">Duplicate</button>
+        <button class="btn-danger" id="btn-delete" ${hasPendingChanges ? 'disabled' : ''} title="${pendingChangesTitle}">Delete Component</button>
+        <button class="btn-secondary" id="btn-duplicate" ${hasPendingChanges ? 'disabled' : ''} title="${pendingChangesTitle}">Duplicate</button>
       </div>
       ` : ''}
     </div>

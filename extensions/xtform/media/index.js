@@ -6666,9 +6666,14 @@ ${end.comment}` : end.comment;
     popup.addEventListener("click", (e) => e.stopPropagation());
     const title = status === "added" ? "Added" : "Removed";
     popup.innerHTML = `
-    <div class="xtform-status-popup-title">${escapeHtml(title)}</div>
-    <button type="button" class="xtform-status-popup-accept">Accept</button>
-    <button type="button" class="xtform-status-popup-reject">Reject</button>
+    <div class="xtform-status-popup-header">
+      <span class="xtform-status-popup-title">${escapeHtml(title)}</span>
+      <button type="button" class="xtform-status-popup-close" title="Close">\xD7</button>
+    </div>
+    <div class="xtform-status-popup-body">
+      <button type="button" class="xtform-status-popup-accept">Accept</button>
+      <button type="button" class="xtform-status-popup-reject">Reject</button>
+    </div>
   `;
     popup.querySelector(".xtform-status-popup-accept")?.addEventListener("click", () => {
       sendResolveAddedRemovedItem(node.uuid, "accept");
@@ -6678,6 +6683,7 @@ ${end.comment}` : end.comment;
       sendResolveAddedRemovedItem(node.uuid, "reject");
       closeFieldPopup();
     });
+    popup.querySelector(".xtform-status-popup-close")?.addEventListener("click", () => closeFieldPopup());
     document.body.appendChild(popup);
     positionPopupNearAnchor(popup, anchor);
     openFieldPopupEl = popup;
@@ -7146,6 +7152,8 @@ ${end.comment}` : end.comment;
       propertyContent.innerHTML = '<p class="no-selection">Component not found</p>';
       return;
     }
+    const hasPendingChanges = node.type !== "Form" && !!node.changes?.status;
+    const pendingChangesTitle = hasPendingChanges ? "This component has pending changes \u2014 resolve them via its status badge first" : "";
     const html = `
     <div class="property-form">
       <div class="property-section">
@@ -7202,8 +7210,8 @@ ${end.comment}` : end.comment;
 
       ${node.type !== "Form" ? `
       <div class="property-actions">
-        <button class="btn-danger" id="btn-delete">Delete Component</button>
-        <button class="btn-secondary" id="btn-duplicate">Duplicate</button>
+        <button class="btn-danger" id="btn-delete" ${hasPendingChanges ? "disabled" : ""} title="${pendingChangesTitle}">Delete Component</button>
+        <button class="btn-secondary" id="btn-duplicate" ${hasPendingChanges ? "disabled" : ""} title="${pendingChangesTitle}">Duplicate</button>
       </div>
       ` : ""}
     </div>
