@@ -6291,6 +6291,22 @@ ${end.comment}` : end.comment;
     }
   }
 
+  // src/parsers/options.ts
+  function parseOptions2(options) {
+    if (!options) {
+      return [];
+    }
+    const separator = options.includes("\n") ? /\r?\n/ : ",";
+    return options.split(separator).map((option) => option.trim()).filter((option) => option.length > 0);
+  }
+  function formatOptions(options) {
+    return options.map((option) => `${option}
+`).join("");
+  }
+  function normalizeOptionsText(text) {
+    return formatOptions(text.split(/\r?\n/).map((option) => option.trim()).filter((option) => option.length > 0));
+  }
+
   // src/formActions.ts
   function getInteractionActionsForForm(actions, formKind) {
     if (!formKind || !Object.prototype.hasOwnProperty.call(actions, formKind)) {
@@ -6403,7 +6419,7 @@ ${end.comment}` : end.comment;
         type: "Select",
         uuid,
         label: "New Select",
-        options: "Option 1,Option 2,Option 3",
+        options: "Option 1\nOption 2\nOption 3\n",
         value: "Option 1"
       })
     },
@@ -6417,7 +6433,7 @@ ${end.comment}` : end.comment;
         type: "RadioGroup",
         uuid,
         label: "Choose One",
-        options: "Option 1,Option 2,Option 3",
+        options: "Option 1\nOption 2\nOption 3\n",
         value: "Option 1"
       })
     },
@@ -6543,9 +6559,12 @@ ${end.comment}` : end.comment;
     }
   }
   var MODIFIED_DIFF_FIELD_ORDER = ["label", "description", "options", "width", "align"];
-  function formatDiffValue(value) {
+  function formatDiffValue(value, key) {
     if (value === void 0 || value === null || value === "") {
       return '""';
+    }
+    if (key === "options" && typeof value === "string") {
+      return parseOptions2(value).map((option) => `"${option}"`).join(", ");
     }
     return typeof value === "string" ? `"${value}"` : String(value);
   }
@@ -6608,9 +6627,9 @@ ${end.comment}` : end.comment;
     return `
     <div class="xtform-metadata-key">${escapeHtml(entry.key)}</div>
     <div class="xtform-metadata-values">
-      <span class="${prevClass}">${escapeHtml(formatDiffValue(entry.prevValue))}</span>
+      <span class="${prevClass}">${escapeHtml(formatDiffValue(entry.prevValue, entry.key))}</span>
       <span class="xtform-diff-arrow">\u2192</span>
-      <span class="${currClass}">${escapeHtml(formatDiffValue(entry.currValue))}</span>
+      <span class="${currClass}">${escapeHtml(formatDiffValue(entry.currValue, entry.key))}</span>
     </div>
   `;
   }
@@ -6843,7 +6862,7 @@ ${end.comment}` : end.comment;
   `;
   }
   function renderSelect(node) {
-    const options = (node.options || "").split(",").map((opt) => opt.trim());
+    const options = parseOptions2(node.options);
     const optionsHtml = options.map(
       (opt) => `<option value="${escapeHtml(opt)}" ${node.value === opt ? "selected" : ""}>${escapeHtml(opt)}</option>`
     ).join("");
@@ -6858,7 +6877,7 @@ ${end.comment}` : end.comment;
   `;
   }
   function renderRadioGroup(node) {
-    const options = (node.options || "").split(",").map((opt) => opt.trim());
+    const options = parseOptions2(node.options);
     const optionsHtml = options.map((opt, idx) => {
       const radioId = `${node.uuid}-${idx}`;
       return `
@@ -6937,7 +6956,7 @@ ${end.comment}` : end.comment;
         return `<input type="time" ${commonAttrs} value="${escapeHtml(String(value ?? ""))}" />`;
       case "Select":
       case "RadioGroup": {
-        const options = (column.options || "").split(",").map((opt) => opt.trim()).filter((opt) => opt);
+        const options = parseOptions2(column.options);
         const optionsHtml = options.map(
           (opt) => `<option value="${escapeHtml(opt)}" ${value === opt ? "selected" : ""}>${escapeHtml(opt)}</option>`
         ).join("");
@@ -7211,13 +7230,12 @@ ${end.comment}` : end.comment;
 
       ${node.type === "Select" || node.type === "RadioGroup" ? `
       <div class="property-section">
-        <label class="property-label">Options (comma-separated)</label>
-        <input
-          type="text"
-          class="property-input"
+        <label class="property-label" for="prop-options">Options (One per Line)</label>
+        <textarea
+          class="property-textarea"
           id="prop-options"
-          value="${escapeHtml(node.options || "")}"
-        />
+          rows="5"
+        >${escapeHtml(parseOptions2(node.options).join("\n"))}</textarea>
       </div>
       ` : ""}
 
@@ -7248,7 +7266,7 @@ ${end.comment}` : end.comment;
     const optionsInput = document.getElementById("prop-options");
     if (optionsInput) {
       optionsInput.addEventListener("input", () => {
-        sendUpdateProperty(uuid, "options", optionsInput.value);
+        sendUpdateProperty(uuid, "options", normalizeOptionsText(optionsInput.value));
       });
     }
     const deleteBtn = document.getElementById("btn-delete");

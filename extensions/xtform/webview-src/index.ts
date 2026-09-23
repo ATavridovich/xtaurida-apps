@@ -3,6 +3,7 @@
 
 import * as YAML from 'yaml';
 import { unflattenNode } from '../src/parsers/yamlParser';
+import { normalizeOptionsText, parseOptions } from '../src/parsers/options';
 import { FormAction, InteractionFormActions, getInteractionActionsForForm } from '../src/formActions';
 
 // Type definitions matching backend
@@ -193,7 +194,7 @@ const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
       type: 'Select',
       uuid,
       label: 'New Select',
-      options: 'Option 1,Option 2,Option 3',
+      options: 'Option 1\nOption 2\nOption 3\n',
       value: 'Option 1'
     })
   },
@@ -207,7 +208,7 @@ const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
       type: 'RadioGroup',
       uuid,
       label: 'Choose One',
-      options: 'Option 1,Option 2,Option 3',
+      options: 'Option 1\nOption 2\nOption 3\n',
       value: 'Option 1'
     })
   },
@@ -399,9 +400,13 @@ interface ModifiedEntry {
   currValue: unknown;
 }
 
-function formatDiffValue(value: unknown): string {
+function formatDiffValue(value: unknown, key: string): string {
   if (value === undefined || value === null || value === '') {
     return '""';
+  }
+  if (key === 'options' && typeof value === 'string') {
+    // Multi-line option list — shown on one line in the popup's diff row
+    return parseOptions(value).map(option => `"${option}"`).join(', ');
   }
   return typeof value === 'string' ? `"${value}"` : String(value);
 }
@@ -489,9 +494,9 @@ function metadataRowContentHtml(entry: ModifiedEntry, selected: 'prev' | 'curr')
   return `
     <div class="xtform-metadata-key">${escapeHtml(entry.key)}</div>
     <div class="xtform-metadata-values">
-      <span class="${prevClass}">${escapeHtml(formatDiffValue(entry.prevValue))}</span>
+      <span class="${prevClass}">${escapeHtml(formatDiffValue(entry.prevValue, entry.key))}</span>
       <span class="xtform-diff-arrow">→</span>
-      <span class="${currClass}">${escapeHtml(formatDiffValue(entry.currValue))}</span>
+      <span class="${currClass}">${escapeHtml(formatDiffValue(entry.currValue, entry.key))}</span>
     </div>
   `;
 }
@@ -766,7 +771,7 @@ function renderTimePicker(node: XtformNode): string {
 }
 
 function renderSelect(node: XtformNode): string {
-  const options = (node.options || '').split(',').map(opt => opt.trim());
+  const options = parseOptions(node.options);
   const optionsHtml = options.map(opt =>
     `<option value="${escapeHtml(opt)}" ${node.value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
   ).join('');
@@ -783,7 +788,7 @@ function renderSelect(node: XtformNode): string {
 }
 
 function renderRadioGroup(node: XtformNode): string {
-  const options = (node.options || '').split(',').map(opt => opt.trim());
+  const options = parseOptions(node.options);
   const optionsHtml = options.map((opt, idx) => {
     const radioId = `${node.uuid}-${idx}`;
     return `
@@ -880,7 +885,7 @@ function renderCellInput(column: XtformNode, row: XtformTableRow): string {
       return `<input type="time" ${commonAttrs} value="${escapeHtml(String(value ?? ''))}" />`;
     case 'Select':
     case 'RadioGroup': {
-      const options = (column.options || '').split(',').map(opt => opt.trim()).filter(opt => opt);
+      const options = parseOptions(column.options);
       const optionsHtml = options.map(opt =>
         `<option value="${escapeHtml(opt)}" ${value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
       ).join('');
@@ -1243,13 +1248,12 @@ function renderPropertyEditor(uuid: string): void {
 
       ${node.type === 'Select' || node.type === 'RadioGroup' ? `
       <div class="property-section">
-        <label class="property-label">Options (comma-separated)</label>
-        <input
-          type="text"
-          class="property-input"
+        <label class="property-label" for="prop-options">Options (One per Line)</label>
+        <textarea
+          class="property-textarea"
           id="prop-options"
-          value="${escapeHtml(node.options || '')}"
-        />
+          rows="5"
+        >${escapeHtml(parseOptions(node.options).join('\n'))}</textarea>
       </div>
       ` : ''}
 
@@ -1284,10 +1288,10 @@ function setupPropertyEditorListeners(uuid: string): void {
   }
 
   // Options
-  const optionsInput = document.getElementById('prop-options') as HTMLInputElement;
+  const optionsInput = document.getElementById('prop-options') as HTMLTextAreaElement;
   if (optionsInput) {
     optionsInput.addEventListener('input', () => {
-      sendUpdateProperty(uuid, 'options', optionsInput.value);
+      sendUpdateProperty(uuid, 'options', normalizeOptionsText(optionsInput.value));
     });
   }
 

@@ -1,4 +1,5 @@
 import { ComponentTag } from '../parsers/componentTagParser';
+import { parseOptions } from '../parsers/options';
 
 /**
  * Renders component tags as HTML form
@@ -218,8 +219,7 @@ function renderSelect(component: ComponentTag, data: Record<string, any>): strin
   const label = component.label || component.attributes.label || '';
   const description = component.attributes.description || '';
   const value = data[component.uuid] || '';
-  const optionsStr = component.attributes.options || '';
-  const options = optionsStr.split(',').map(opt => opt.trim()).filter(opt => opt);
+  const options = parseOptions(component.attributes.options);
 
   return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
   ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
@@ -238,8 +238,7 @@ function renderRadioGroup(component: ComponentTag, data: Record<string, any>): s
   const label = component.label || component.attributes.label || '';
   const description = component.attributes.description || '';
   const value = data[component.uuid] || '';
-  const optionsStr = component.attributes.options || '';
-  const options = optionsStr.split(',').map(opt => opt.trim()).filter(opt => opt);
+  const options = parseOptions(component.attributes.options);
 
   return `<div class="xtform-field" data-uuid="${escapeHtml(component.uuid)}">
   ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}

@@ -88,7 +88,7 @@ export interface XtformNode {
   /** Current field value (for scalar fields) */
   value?: any;
 
-  /** Comma-separated list of options (for enum fields) */
+  /** Options for enum fields: multi-line text, one option per line (legacy: comma-separated) — see `parseOptions` */
   options?: string;
 
   /** Child elements or column definitions (for containers) */

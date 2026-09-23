@@ -156,11 +156,26 @@ export function serializeXtformDocument(doc: XtformDocument): string {
   const flattened = JSON.parse(JSON.stringify(doc));
   flattenNode(flattened);
 
-  return YAML.stringify(flattened, {
+  const options: YAML.DocumentOptions & YAML.SchemaOptions & YAML.CreateNodeOptions & YAML.ToStringOptions = {
     indent: 2,
     lineWidth: 0,
     defaultStringType: 'QUOTE_DOUBLE'
+  };
+  const yamlDoc = new YAML.Document(flattened, options);
+
+  // Multi-line `options` (one option per line, see `parseOptions`) are
+  // written as a literal block so the file stays readable and hand-editable
+  // instead of a double-quoted string full of `\n` escapes.
+  YAML.visit(yamlDoc, {
+    Pair(_key, pair) {
+      if (YAML.isScalar(pair.key) && pair.key.value === 'options'
+        && YAML.isScalar(pair.value) && typeof pair.value.value === 'string' && pair.value.value.includes('\n')) {
+        pair.value.type = YAML.Scalar.BLOCK_LITERAL;
+      }
+    }
   });
+
+  return yamlDoc.toString(options);
 }
 
 /**

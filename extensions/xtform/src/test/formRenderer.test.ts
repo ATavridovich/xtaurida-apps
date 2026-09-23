@@ -109,6 +109,30 @@ suite('Form Renderer', () => {
       assert.ok(html.includes('value="Option2" selected'));
     });
 
+    test('should render Select component with multi-line options', () => {
+      const components: ComponentTag[] = [
+        {
+          type: 'Select',
+          uuid: 'f-001',
+          label: 'Location',
+          attributes: {
+            uuid: 'f-001',
+            label: 'Location',
+            options: 'Kyiv, Ukraine\nWarsaw, Poland\n'
+          },
+          selfClosing: true
+        }
+      ];
+
+      const html = renderForm(components, { 'f-001': 'Warsaw, Poland' });
+
+      assert.deepStrictEqual(
+        [...html.matchAll(/<option value="(?<value>[^"]*)"/g)].map(match => match.groups?.value),
+        ['', 'Kyiv, Ukraine', 'Warsaw, Poland']
+      );
+      assert.ok(html.includes('value="Warsaw, Poland" selected'));
+    });
+
     test('should render IntegerInput component', () => {
       const components: ComponentTag[] = [
         {
