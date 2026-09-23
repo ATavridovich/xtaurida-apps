@@ -156,6 +156,38 @@ body {
   cursor: not-allowed;
 }
 
+.xtform-interaction-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+/* Interaction form buttons (xtaurida.interactionFormActions[form_kind]); first one is primary */
+.xtform-interaction-btn {
+  padding: 4px 14px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.xtform-interaction-btn:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.xtform-interaction-btn:first-child {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.xtform-interaction-btn:first-child:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
 /* Draft toolbar: "{title} (draft)" + Accept All / Reject All (spec/xtdraft-format.md) */
 .xtform-draft-badge {
   font-size: 0.55em;

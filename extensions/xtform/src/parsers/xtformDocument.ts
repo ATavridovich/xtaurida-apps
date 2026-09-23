@@ -146,6 +146,9 @@ export interface XtformDocument {
   /** When true, the Viewer shows the universal Apply button for this form */
   show_apply_action?: boolean;
 
+  /** Interaction form kind (e.g. `clarify`); the Viewer shows the matching `xtaurida.interactionFormActions` buttons */
+  form_kind?: string;
+
   /** Bumped by the Viewer on every edit — see `applied_revision` */
   revision?: number;
 

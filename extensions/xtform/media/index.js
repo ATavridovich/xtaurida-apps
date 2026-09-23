@@ -6291,6 +6291,14 @@ ${end.comment}` : end.comment;
     }
   }
 
+  // src/formActions.ts
+  function getInteractionActionsForForm(actions, formKind) {
+    if (!formKind || !Object.prototype.hasOwnProperty.call(actions, formKind)) {
+      return [];
+    }
+    return actions[formKind];
+  }
+
   // webview-src/index.ts
   var COMPONENT_REGISTRY = [
     // Input Components
@@ -6481,6 +6489,7 @@ ${end.comment}` : end.comment;
   var quickActions = [];
   var openQuickMenu = null;
   var applyAction = null;
+  var interactionFormActions = {};
   function closeQuickMenu() {
     if (openQuickMenu) {
       openQuickMenu.remove();
@@ -6512,6 +6521,9 @@ ${end.comment}` : end.comment;
   }
   function sendRunCommand(command, args) {
     vscode.postMessage({ type: "runCommand", command, args });
+  }
+  function sendRunInteractionAction(command) {
+    vscode.postMessage({ type: "runInteractionAction", command });
   }
   function escapeHtml(text) {
     const div = document.createElement("div");
@@ -6993,6 +7005,8 @@ ${end.comment}` : end.comment;
       const applyEligible = applyAction !== null && doc.show_apply_action === true;
       const applyEnabled = applyEligible && (doc.applied_revision == null || doc.applied_revision !== doc.revision);
       const applyButton = applyEligible ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction.command)}"${applyEnabled ? "" : " disabled"}>${escapeHtml(applyAction.title)}</button>` : "";
+      const interactionButtons = getInteractionActionsForForm(interactionFormActions, doc.form_kind).map((action) => `<button class="xtform-interaction-btn" data-command="${escapeHtml(action.command)}">${escapeHtml(action.title)}</button>`).join("");
+      const interactionActionsHtml = interactionButtons ? `<div class="xtform-interaction-actions">${interactionButtons}</div>` : "";
       const draftBadge = hasPendingChanges ? `<span class="xtform-draft-badge">(pending changes \u2014 ${pendingChangeCount} remaining)</span>` : "";
       const draftToolbarHtml = hasPendingChanges ? `<div class="xtform-draft-actions">
           <button class="xtform-draft-accept-all">Accept All</button>
@@ -7004,6 +7018,7 @@ ${end.comment}` : end.comment;
           <h2 class="xtform-form-title">${escapeHtml(doc.label || "Untitled Form")}${draftStatusBadgeHtml(doc)} ${draftBadge}</h2>
           ${draftToolbarHtml}
           ${applyButton}
+          ${interactionActionsHtml}
           ${quickMenuButton}
         </div>
         ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ""}
@@ -7034,6 +7049,15 @@ ${end.comment}` : end.comment;
         const command = btn.getAttribute("data-command");
         if (command) {
           sendRunCommand(command);
+        }
+      });
+    });
+    document.querySelectorAll(".xtform-interaction-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const command = btn.getAttribute("data-command");
+        if (command) {
+          sendRunInteractionAction(command);
         }
       });
     });
@@ -7449,6 +7473,7 @@ ${end.comment}` : end.comment;
           const selectionEnd = hasFocus && "selectionEnd" in activeElement ? activeElement.selectionEnd : null;
           quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
           applyAction = message.applyAction ?? null;
+          interactionFormActions = message.interactionFormActions ?? {};
           currentDoc = parse(message.content);
           unflattenNode(currentDoc);
           renderForm(currentDoc);

@@ -3,6 +3,7 @@
 
 import * as YAML from 'yaml';
 import { unflattenNode } from '../src/parsers/yamlParser';
+import { FormAction, InteractionFormActions, getInteractionActionsForForm } from '../src/formActions';
 
 // Type definitions matching backend
 
@@ -64,6 +65,7 @@ interface XtformDocument {
   items?: XtformNode[];
   disable_quick_actions?: boolean;
   show_apply_action?: boolean;
+  form_kind?: string;
   revision?: number;
   applied_revision?: number | null;
   changes?: XtformRootChanges;
@@ -284,12 +286,7 @@ const vscode = acquireVsCodeApi();
 // declared (e.g. xTaurida Agent isn't installed), the menu button doesn't
 // render at all.
 
-interface QuickAction {
-  command: string;
-  title: string;
-}
-
-let quickActions: QuickAction[] = [];
+let quickActions: FormAction[] = [];
 let openQuickMenu: HTMLElement | null = null;
 
 // === APPLY ACTION ===
@@ -298,7 +295,15 @@ let openQuickMenu: HTMLElement | null = null;
 // given form actually shows the button is decided purely from the
 // document's own `show_apply_action` flag in renderForm(), not here.
 
-let applyAction: QuickAction | null = null;
+let applyAction: FormAction | null = null;
+
+// === INTERACTION FORM ACTIONS ===
+// Button sets for interaction forms (e.g. Clarify → Apply/Cancel), keyed by
+// the document's root `form_kind`. Declared by whichever extension owns the
+// commands (see 'update' message handler); the Viewer only renders the
+// buttons and dispatches — the extension host passes the form's uri.
+
+let interactionFormActions: InteractionFormActions = {};
 
 function closeQuickMenu(): void {
   if (openQuickMenu) {
@@ -336,6 +341,10 @@ function toggleQuickMenu(anchor: HTMLElement): void {
 
 function sendRunCommand(command: string, args?: unknown[]): void {
   vscode.postMessage({ type: 'runCommand', command, args });
+}
+
+function sendRunInteractionAction(command: string): void {
+  vscode.postMessage({ type: 'runInteractionAction', command });
 }
 
 // === RENDERING FUNCTIONS ===
@@ -966,6 +975,13 @@ function renderForm(doc: XtformDocument): void {
       ? `<button class="xtform-apply-btn" data-command="${escapeHtml(applyAction!.command)}"${applyEnabled ? '' : ' disabled'}>${escapeHtml(applyAction!.title)}</button>`
       : '';
 
+    const interactionButtons = getInteractionActionsForForm(interactionFormActions, doc.form_kind)
+      .map(action => `<button class="xtform-interaction-btn" data-command="${escapeHtml(action.command)}">${escapeHtml(action.title)}</button>`)
+      .join('');
+    const interactionActionsHtml = interactionButtons
+      ? `<div class="xtform-interaction-actions">${interactionButtons}</div>`
+      : '';
+
     const draftBadge = hasPendingChanges
       ? `<span class="xtform-draft-badge">(pending changes — ${pendingChangeCount} remaining)</span>`
       : '';
@@ -985,6 +1001,7 @@ function renderForm(doc: XtformDocument): void {
           <h2 class="xtform-form-title">${escapeHtml(doc.label || 'Untitled Form')}${draftStatusBadgeHtml(doc)} ${draftBadge}</h2>
           ${draftToolbarHtml}
           ${applyButton}
+          ${interactionActionsHtml}
           ${quickMenuButton}
         </div>
         ${doc.description ? `<p class="xtform-form-description">${escapeHtml(doc.description)}</p>` : ''}
@@ -1025,6 +1042,17 @@ function setupEventListeners(): void {
       const command = (btn as HTMLElement).getAttribute('data-command');
       if (command) {
         sendRunCommand(command);
+      }
+    });
+  });
+
+  // Interaction form buttons (e.g. Clarify's Apply/Cancel) on the form header
+  document.querySelectorAll('.xtform-interaction-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const command = (btn as HTMLElement).getAttribute('data-command');
+      if (command) {
+        sendRunInteractionAction(command);
       }
     });
   });
@@ -1563,6 +1591,7 @@ window.addEventListener('message', event => {
 
         quickActions = Array.isArray(message.quickActions) ? message.quickActions : [];
         applyAction = message.applyAction ?? null;
+        interactionFormActions = message.interactionFormActions ?? {};
         currentDoc = YAML.parse(message.content) as XtformDocument;
         unflattenNode(currentDoc);
         renderForm(currentDoc);

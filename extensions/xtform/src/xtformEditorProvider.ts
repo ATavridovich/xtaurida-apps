@@ -24,11 +24,13 @@ import {
 import { XtformDocument as XtformDocumentType, XtformNode, XtformTableRow } from './parsers/xtformDocument';
 import { getNonce } from './util/uuid';
 import { Disposable } from './util/dispose';
-
-interface FormQuickAction {
-  command: string;
-  title: string;
-}
+import {
+  FormAction,
+  InteractionFormActions,
+  getInteractionActionsForForm,
+  parseFormActionList,
+  parseInteractionFormActions
+} from './formActions';
 
 /**
  * Reads the form quick-menu actions declared by the xTaurida Agent
@@ -38,10 +40,22 @@ interface FormQuickAction {
  * expected to hide the quick-menu entirely in that case, rather than
  * hardcode a guessed command list here.
  */
-function getFormQuickActions(): FormQuickAction[] {
+function getFormQuickActions(): FormAction[] {
   const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
-  const actions = agentExt?.packageJSON?.xtaurida?.formQuickActions;
-  return Array.isArray(actions) ? actions : [];
+  return parseFormActionList(agentExt?.packageJSON?.xtaurida?.formQuickActions);
+}
+
+/**
+ * Reads the interaction-form button sets declared by the xTaurida Agent
+ * extension's manifest (`xtaurida.interactionFormActions` in its
+ * package.json), keyed by `form_kind` — e.g. `clarify` → Apply/Cancel.
+ * Same declarative pattern as `formQuickActions`: the Viewer only renders
+ * and dispatches, the Agent decides which commands exist. A form shows
+ * the set matching its own root `form_kind`, if any.
+ */
+function getInteractionFormActions(): InteractionFormActions {
+  const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
+  return parseInteractionFormActions(agentExt?.packageJSON?.xtaurida?.interactionFormActions);
 }
 
 /**
@@ -52,7 +66,7 @@ function getFormQuickActions(): FormQuickAction[] {
  * shows it is decided by the Viewer from the document's own
  * `show_apply_action` flag, not here.
  */
-function getFormApplyAction(): FormQuickAction | undefined {
+function getFormApplyAction(): FormAction | undefined {
   const agentExt = vscode.extensions.getExtension('xtaurida.xtaurida-agent');
   const action = agentExt?.packageJSON?.xtaurida?.formApplyAction;
   return action && typeof action.command === 'string' && typeof action.title === 'string'
@@ -496,6 +510,15 @@ class XtformEditor extends Disposable {
         await this.handleRunCommand(message.command, message.args);
         break;
 
+      case 'runInteractionAction':
+        // Interaction-form button (e.g. Clarify's Apply/Cancel) declared in
+        // `xtaurida.interactionFormActions[form_kind]`. Waits for pending
+        // edits so they're included in the save, but runs outside the edit
+        // queue — the command may be long-running (Apply runs Refine).
+        await this.editQueue;
+        await this.handleRunInteractionAction(message.command);
+        break;
+
       case 'error':
         // Show error from webview
         vscode.window.showErrorMessage(`XTForm Error: ${message.message}`);
@@ -513,6 +536,29 @@ class XtformEditor extends Disposable {
   private async handleRunCommand(command: string, args?: unknown[]): Promise<void> {
     try {
       await vscode.commands.executeCommand(command, ...(args ?? []));
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to run "${command}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Runs an interaction-form button's command (e.g. `xtaurida.clarifyApply`)
+   * with this document's uri as its argument. The command must be one of
+   * those declared for the document's own `form_kind`. Unsaved edits are
+   * saved first, since the Agent command reads the form from disk — e.g.
+   * Clarify's Apply would otherwise miss answers the user just typed.
+   */
+  private async handleRunInteractionAction(command: string): Promise<void> {
+    try {
+      const doc = parseXtformDocument(this.document.content);
+      const declared = getInteractionActionsForForm(getInteractionFormActions(), doc.form_kind);
+      if (!declared.some(action => action.command === command)) {
+        throw new Error('command is not declared for this form');
+      }
+      await vscode.workspace.save(this.document.uri);
+      await vscode.commands.executeCommand(command, this.document.uri);
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to run "${command}": ${error instanceof Error ? error.message : String(error)}`
@@ -782,7 +828,8 @@ class XtformEditor extends Disposable {
       type: 'update',
       content: this.document.content,
       quickActions: getFormQuickActions(),
-      applyAction: getFormApplyAction() ?? null
+      applyAction: getFormApplyAction() ?? null,
+      interactionFormActions: getInteractionFormActions()
     });
   }
 }
