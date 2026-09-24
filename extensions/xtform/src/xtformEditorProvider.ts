@@ -651,7 +651,9 @@ class XtformEditor extends Disposable {
 
   /**
    * Handles the draft toolbar's Accept All — resolves every pending change
-   * in the document at once.
+   * in the document at once, then saves, since Accept All is a one-shot
+   * resolution the user expects to be committed immediately rather than
+   * left as an unsaved edit.
    */
   private async handleAcceptAllChanges(): Promise<void> {
     try {
@@ -659,6 +661,7 @@ class XtformEditor extends Disposable {
       const newDoc = acceptAllChanges(doc);
       const newContent = serializeXtformDocument(newDoc);
       this.document.setContent(newContent);
+      await vscode.workspace.save(this.document.uri);
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to accept all changes: ${error instanceof Error ? error.message : String(error)}`
@@ -668,7 +671,7 @@ class XtformEditor extends Disposable {
 
   /**
    * Handles the draft toolbar's Reject All — rejects every pending change
-   * in the document at once.
+   * in the document at once, then saves (see `handleAcceptAllChanges`).
    */
   private async handleRejectAllChanges(): Promise<void> {
     try {
@@ -676,6 +679,7 @@ class XtformEditor extends Disposable {
       const newDoc = rejectAllChanges(doc);
       const newContent = serializeXtformDocument(newDoc);
       this.document.setContent(newContent);
+      await vscode.workspace.save(this.document.uri);
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to reject all changes: ${error instanceof Error ? error.message : String(error)}`
