@@ -1,0 +1,27 @@
+"type": "Form"
+"uuid": "test-formlink-001"
+"label": "FormLink Component Test"
+"description": "Test form for FormLink component"
+"items":
+  - "type": "Section"
+    "uuid": "s-001"
+    "label": "Advanced Components"
+    "items":
+      - "type": "FormLink"
+        "uuid": "f-001"
+        "label": "Related Requirement"
+        "description": "Business requirement this form implements"
+        "value": "f3a1d820-cc74-4e1b-9a2f-8b3e5c6d7f90"
+      - "type": "FormLink"
+        "uuid": "f-002"
+        "label": "Parent Form"
+        "description": "Parent form reference (empty example)"
+        "value": ""
+      - "type": "Table"
+        "uuid": "t-001"
+        "label": "Sample Table"
+        "items":
+          - "type": "TextInput"
+            "uuid": "c-001"
+            "label": "Name"
+        "data": []

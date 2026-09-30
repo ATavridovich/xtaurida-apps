@@ -37,6 +37,8 @@ function renderComponent(component: ComponentTag, data: Record<string, any>): st
       return renderSelect(component, data);
     case 'RadioGroup':
       return renderRadioGroup(component, data);
+    case 'FormLink':
+      return renderFormLink(component, data);
     case 'Table':
       return renderTable(component, data);
     default:
@@ -256,6 +258,36 @@ function renderRadioGroup(component: ComponentTag, data: Record<string, any>): s
       />
       ${escapeHtml(opt)}
     </label>`).join('\n    ')}
+  </div>
+</div>`;
+}
+
+/**
+ * Renders a FormLink component
+ */
+function renderFormLink(component: ComponentTag, data: Record<string, any>): string {
+  const label = component.label || component.attributes.label || '';
+  const description = component.attributes.description || '';
+  const value = data[component.uuid] || '';
+
+  // Display form title if available in metadata, otherwise show UUID or empty
+  const displayText = value ? `Form: ${escapeHtml(value)}` : '';
+
+  return `<div class="xtform-field xtform-formlink" data-uuid="${escapeHtml(component.uuid)}">
+  ${label ? `<label class="xtform-label">${escapeHtml(label)}</label>` : ''}
+  ${description ? `<div class="xtform-description">${escapeHtml(description)}</div>` : ''}
+  <div class="xtform-formlink-container">
+    <div class="xtform-formlink-value">
+      ${displayText}
+    </div>
+    <div class="xtform-formlink-buttons">
+      <button class="xtform-button xtform-formlink-select" data-uuid="${escapeHtml(component.uuid)}" data-action="select">
+        Select
+      </button>
+      <button class="xtform-button xtform-formlink-create" data-uuid="${escapeHtml(component.uuid)}" data-action="create">
+        Create
+      </button>
+    </div>
   </div>
 </div>`;
 }

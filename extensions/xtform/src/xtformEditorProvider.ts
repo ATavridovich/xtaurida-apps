@@ -503,6 +503,11 @@ class XtformEditor extends Disposable {
         await this.editQueue;
         break;
 
+      case 'formLinkAction':
+        // FormLink button action (Select or Create)
+        await this.handleFormLinkAction(message.uuid, message.action);
+        break;
+
       case 'runCommand':
         // Quick action from the form header menu, or the universal Apply
         // button (`show_apply_action`) — Agent commands the Viewer just
@@ -820,6 +825,25 @@ class XtformEditor extends Disposable {
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to update table cell: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  /**
+   * Handles FormLink button actions (Select or Create)
+   */
+  private async handleFormLinkAction(uuid: string, action: string): Promise<void> {
+    try {
+      if (action === 'select') {
+        vscode.window.showInformationMessage(`FormLink Select clicked for component ${uuid}`);
+        // TODO: Implement form selection dialog
+      } else if (action === 'create') {
+        vscode.window.showInformationMessage(`FormLink Create clicked for component ${uuid}`);
+        // TODO: Implement form creation
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to handle FormLink action: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

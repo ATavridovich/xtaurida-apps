@@ -6479,6 +6479,19 @@ ${end.comment}` : end.comment;
     },
     // Advanced Components
     {
+      type: "FormLink",
+      category: "advanced",
+      label: "Form Link",
+      icon: "\u{1F517}",
+      description: "Link to another form by UUID",
+      createNode: (uuid) => ({
+        type: "FormLink",
+        uuid,
+        label: "Related Form",
+        value: ""
+      })
+    },
+    {
       type: "Table",
       category: "advanced",
       label: "Table",
@@ -6752,6 +6765,7 @@ ${end.comment}` : end.comment;
       "Section": renderSection,
       "CollapsibleSection": renderCollapsibleSection,
       "Tab": renderTab,
+      "FormLink": renderFormLink,
       "Table": renderTable
     };
     const handler = handlers[node.type];
@@ -6936,6 +6950,22 @@ ${end.comment}` : end.comment;
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
       <div class="xtform-tab-content">
         ${childrenHtml}
+      </div>
+    </div>
+  `;
+  }
+  function renderFormLink(node) {
+    const displayValue = node.value ? `Form: ${escapeHtml(String(node.value))}` : "";
+    return `
+    <div class="xtform-field xtform-formlink xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftStatusBadgeHtml(node)}</label>` : ""}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ""}
+      <div class="xtform-formlink-container">
+        <div class="xtform-formlink-value">${displayValue}</div>
+        <div class="xtform-formlink-buttons">
+          <button class="xtform-button xtform-formlink-select" data-uuid="${node.uuid}" data-action="select">Select</button>
+          <button class="xtform-button xtform-formlink-create" data-uuid="${node.uuid}" data-action="create">Create</button>
+        </div>
       </div>
     </div>
   `;
@@ -7134,6 +7164,16 @@ ${end.comment}` : end.comment;
         const tableUuid = table?.getAttribute("data-table-uuid");
         if (tableUuid && rowUuid) {
           sendDeleteTableRow(tableUuid, rowUuid);
+        }
+      });
+    });
+    document.querySelectorAll(".xtform-formlink-select, .xtform-formlink-create").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const uuid = btn.getAttribute("data-uuid");
+        const action = btn.getAttribute("data-action");
+        if (uuid && action) {
+          sendFormLinkAction(uuid, action);
         }
       });
     });
@@ -7473,6 +7513,13 @@ ${end.comment}` : end.comment;
       rowUuid,
       columnUuid,
       value
+    });
+  }
+  function sendFormLinkAction(uuid, action) {
+    vscode.postMessage({
+      type: "formLinkAction",
+      uuid,
+      action
     });
   }
   window.addEventListener("message", (event) => {

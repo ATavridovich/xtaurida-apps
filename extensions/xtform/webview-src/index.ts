@@ -254,6 +254,19 @@ const COMPONENT_REGISTRY: ComponentRegistryEntry[] = [
   },
   // Advanced Components
   {
+    type: 'FormLink',
+    category: 'advanced',
+    label: 'Form Link',
+    icon: '🔗',
+    description: 'Link to another form by UUID',
+    createNode: (uuid: string): XtformNode => ({
+      type: 'FormLink',
+      uuid,
+      label: 'Related Form',
+      value: ''
+    })
+  },
+  {
     type: 'Table',
     category: 'advanced',
     label: 'Table',
@@ -651,6 +664,7 @@ function renderNode(node: XtformNode): string {
     'Section': renderSection,
     'CollapsibleSection': renderCollapsibleSection,
     'Tab': renderTab,
+    'FormLink': renderFormLink,
     'Table': renderTable,
   };
 
@@ -860,6 +874,24 @@ function renderTab(node: XtformNode): string {
       ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
       <div class="xtform-tab-content">
         ${childrenHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderFormLink(node: XtformNode): string {
+  const displayValue = node.value ? `Form: ${escapeHtml(String(node.value))}` : '';
+
+  return `
+    <div class="xtform-field xtform-formlink xtform-component${draftStatusClass(node)}" data-uuid="${node.uuid}">
+      ${node.label ? `<label class="xtform-label">${escapeHtml(node.label)}${draftStatusBadgeHtml(node)}</label>` : ''}
+      ${node.description ? `<p class="xtform-description">${escapeHtml(node.description)}</p>` : ''}
+      <div class="xtform-formlink-container">
+        <div class="xtform-formlink-value">${displayValue}</div>
+        <div class="xtform-formlink-buttons">
+          <button class="xtform-button xtform-formlink-select" data-uuid="${node.uuid}" data-action="select">Select</button>
+          <button class="xtform-button xtform-formlink-create" data-uuid="${node.uuid}" data-action="create">Create</button>
+        </div>
       </div>
     </div>
   `;
@@ -1126,6 +1158,18 @@ function setupEventListeners(): void {
       const tableUuid = table?.getAttribute('data-table-uuid');
       if (tableUuid && rowUuid) {
         sendDeleteTableRow(tableUuid, rowUuid);
+      }
+    });
+  });
+
+  // FormLink buttons (Select and Create)
+  document.querySelectorAll('.xtform-formlink-select, .xtform-formlink-create').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const uuid = (btn as HTMLElement).getAttribute('data-uuid');
+      const action = (btn as HTMLElement).getAttribute('data-action');
+      if (uuid && action) {
+        sendFormLinkAction(uuid, action);
       }
     });
   });
@@ -1567,6 +1611,14 @@ function sendUpdateTableCell(tableUuid: string, rowUuid: string, columnUuid: str
     rowUuid,
     columnUuid,
     value
+  });
+}
+
+function sendFormLinkAction(uuid: string, action: string): void {
+  vscode.postMessage({
+    type: 'formLinkAction',
+    uuid,
+    action
   });
 }
 

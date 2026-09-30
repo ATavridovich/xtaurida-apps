@@ -379,6 +379,69 @@ body {
   gap: 8px;
 }
 
+/* FormLink */
+.xtform-formlink-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+  background-color: var(--vscode-input-background);
+}
+
+.xtform-formlink-value {
+  flex: 1;
+  min-height: 24px;
+  color: var(--vscode-input-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  display: flex;
+  align-items: center;
+}
+
+.xtform-formlink-value:empty::before {
+  content: "No form selected";
+  color: var(--vscode-input-placeholderForeground);
+  font-style: italic;
+}
+
+.xtform-formlink-buttons {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.xtform-button {
+  padding: 4px 12px;
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  background-color: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.xtform-button:hover {
+  background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.xtform-formlink-select {
+  /* Inherits from .xtform-button */
+}
+
+.xtform-formlink-create {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.xtform-formlink-create:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
 /* Table */
 .xtform-table {
   display: flex;
